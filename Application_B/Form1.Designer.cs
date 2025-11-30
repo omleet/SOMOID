@@ -28,13 +28,47 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.components = new System.ComponentModel.Container();
+            this.light_on = new System.Windows.Forms.Button();
+            this.light_off = new System.Windows.Forms.Button();
+            this.SuspendLayout();
+            // 
+            // light_on
+            // 
+            this.light_on.Location = new System.Drawing.Point(54, 75);
+            this.light_on.Name = "light_on";
+            this.light_on.Size = new System.Drawing.Size(133, 62);
+            this.light_on.TabIndex = 0;
+            this.light_on.Text = "Light ON";
+            this.light_on.UseVisualStyleBackColor = true;
+            this.light_on.Click += new System.EventHandler(this.light_on_Click);
+            // 
+            // light_off
+            // 
+            this.light_off.Location = new System.Drawing.Point(54, 143);
+            this.light_off.Name = "light_off";
+            this.light_off.Size = new System.Drawing.Size(133, 62);
+            this.light_off.TabIndex = 1;
+            this.light_off.Text = "Light OFF";
+            this.light_off.UseVisualStyleBackColor = true;
+            this.light_off.Click += new System.EventHandler(this.light_off_Click);
+            // 
+            // Form1
+            // 
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(800, 450);
-            this.Text = "Form1";
+            this.ClientSize = new System.Drawing.Size(233, 279);
+            this.Controls.Add(this.light_off);
+            this.Controls.Add(this.light_on);
+            this.Name = "Form1";
+            this.Text = "Application B";
+            this.ResumeLayout(false);
+
         }
 
         #endregion
+
+        private System.Windows.Forms.Button light_on;
+        private System.Windows.Forms.Button light_off;
     }
 }
 
