@@ -1,13 +1,13 @@
-﻿using SOMOID.Models;
-using Api.Routing;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Data.SqlClient;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
-using System.Data.SqlClient;
+using Api.Routing;
+using SOMOID.Models;
 
 namespace SOMOID.Controllers
 {
@@ -15,7 +15,7 @@ namespace SOMOID.Controllers
     /// Controlador para gerenciar Applications no middleware SOMIOD.
     /// Uma application representa uma aplicação específica do mundo real no sistema.
     /// </summary>
-    [RoutePrefix("api/somiod")]
+    [RoutePrefix("api/somiod/app")]
     public class ApplicationController : ApiController
     {
         string connection = Properties.Settings.Default.ConnectionStr;
@@ -31,56 +31,59 @@ namespace SOMOID.Controllers
         /// Exemplos de retorno:
         /// ["/api/somiod/app-1", "/api/somiod/app-2", "/api/somiod/lighting"]
         /// </remarks>
-        [HttpGet]
-        [Route("")]
+        // [HttpGet]
+        // [Route("")]
         //[GetRoute("")]
-        public IHttpActionResult DiscoverApplications()
-        {
-            // Verificar se o header somiod-discovery está presente
-            IEnumerable<string> headerValues;
-            if (!Request.Headers.TryGetValues("somiod-discovery", out headerValues) ||
-                !headerValues.Any(h => h == "application"))
-            {
-                return NotFound();
-            }
+        // public IHttpActionResult DiscoverApplications()
+        // {
+        //     // Verificar se o header somiod-discovery está presente
+        //     IEnumerable<string> headerValues;
+        //     if (
+        //         !Request.Headers.TryGetValues("somiod-discovery", out headerValues)
+        //         || !headerValues.Any(h => h == "application")
+        //     )
+        //     {
+        //         return NotFound();
+        //     }
 
-            var applicationPaths = new List<string>();
-            var conn = new SqlConnection(connection);
+        //     var applicationPaths = new List<string>();
+        //     var conn = new SqlConnection(connection);
 
-            string query = @"
-                SELECT [resource-name]
-                FROM [application]
-                ORDER BY [creation-datetime]";
+        //     string query =
+        //         @"
+        //         SELECT [resource-name]
+        //         FROM [application]
+        //         ORDER BY [creation-datetime]";
 
-            var cmd = new SqlCommand(query, conn);
+        //     var cmd = new SqlCommand(query, conn);
 
-            try
-            {
-                using (conn)
-                {
-                    conn.Open();
-                    var reader = cmd.ExecuteReader();
-                    using (cmd)
-                    {
-                        using (reader)
-                        {
-                            while (reader.Read())
-                            {
-                                string appName = (string)reader["resource-name"];
-                                string path = $"/api/somiod/{appName}";
-                                applicationPaths.Add(path);
-                            }
-                        }
-                    }
-                }
+        //     try
+        //     {
+        //         using (conn)
+        //         {
+        //             conn.Open();
+        //             var reader = cmd.ExecuteReader();
+        //             using (cmd)
+        //             {
+        //                 using (reader)
+        //                 {
+        //                     while (reader.Read())
+        //                     {
+        //                         string appName = (string)reader["resource-name"];
+        //                         string path = $"/api/somiod/{appName}";
+        //                         applicationPaths.Add(path);
+        //                     }
+        //                 }
+        //             }
+        //         }
 
-                return Ok(applicationPaths);
-            }
-            catch (Exception ex)
-            {
-                return InternalServerError(ex);
-            }
-        }
+        //         return Ok(applicationPaths);
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         return InternalServerError(ex);
+        //     }
+        // }
 
         #endregion
 
@@ -102,7 +105,8 @@ namespace SOMOID.Controllers
             Application app = null;
             var conn = new SqlConnection(connection);
 
-            string getQuery = @"
+            string getQuery =
+                @"
                 SELECT [resource-name],
                        [creation-datetime],
                        [res-type]
@@ -128,7 +132,7 @@ namespace SOMOID.Controllers
                                 {
                                     ResourceName = (string)reader["resource-name"],
                                     CreationDatetime = (DateTime)reader["creation-datetime"],
-                                    ResType = (string)reader["res-type"]
+                                    ResType = (string)reader["res-type"],
                                 };
                             }
                         }
@@ -164,7 +168,7 @@ namespace SOMOID.Controllers
         /// {
         ///   "resourceName": "lighting"  // Opcional - auto-gerado se omitido
         /// }
-        /// 
+        ///
         /// Exemplo de resposta (201 Created):
         /// {
         ///   "resourceName": "lighting",
@@ -183,19 +187,25 @@ namespace SOMOID.Controllers
 
             // Auto-gerar nome se não fornecido
             if (string.IsNullOrWhiteSpace(value.ResourceName))
-                value.ResourceName = "app-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + "-" + Guid.NewGuid().ToString().Substring(0, 8);
+                value.ResourceName =
+                    "app-"
+                    + DateTime.UtcNow.ToString("yyyyMMddHHmmss")
+                    + "-"
+                    + Guid.NewGuid().ToString().Substring(0, 8);
 
             // Configurar propriedades automáticas
             value.ResType = "application";
             value.CreationDatetime = DateTime.UtcNow;
 
             // SQL Queries
-            string sqlCheckDuplicate = @"
+            string sqlCheckDuplicate =
+                @"
                 SELECT COUNT(*)
                 FROM [application]
                 WHERE [resource-name] = @appName";
 
-            string sqlInsert = @"
+            string sqlInsert =
+                @"
                 INSERT INTO [application]
                 ([resource-name], [creation-datetime], [res-type])
                 VALUES (@resourceName, @creationDatetime, @resType)";
@@ -230,8 +240,10 @@ namespace SOMOID.Controllers
                         var responseValue = new
                         {
                             resourceName = value.ResourceName,
-                            creationDatetime = value.CreationDatetime.ToString("yyyy-MM-ddTHH:mm:ss"),
-                            resType = value.ResType
+                            creationDatetime = value.CreationDatetime.ToString(
+                                "yyyy-MM-ddTHH:mm:ss"
+                            ),
+                            resType = value.ResType,
                         };
 
                         string locationUrl = $"/api/somiod/{value.ResourceName}";
@@ -270,7 +282,7 @@ namespace SOMOID.Controllers
         /// {
         ///   "resourceName": "lighting-v2"  // Novo nome para a application
         /// }
-        /// 
+        ///
         /// Exemplo: PUT /api/somiod/lighting
         /// Vai renomear "lighting" para "lighting-v2"
         /// </remarks>
@@ -285,7 +297,9 @@ namespace SOMOID.Controllers
 
             // Validação: novo resource-name é obrigatório
             if (string.IsNullOrWhiteSpace(value.ResourceName))
-                return BadRequest("O campo 'resourceName' é obrigatório para atualizar uma application.");
+                return BadRequest(
+                    "O campo 'resourceName' é obrigatório para atualizar uma application."
+                );
 
             // Não permitir update se os nomes são iguais
             if (value.ResourceName.Equals(appName, StringComparison.OrdinalIgnoreCase))
@@ -294,17 +308,20 @@ namespace SOMOID.Controllers
             var conn = new SqlConnection(connection);
 
             // SQL Queries
-            string sqlCheckExists = @"
+            string sqlCheckExists =
+                @"
                 SELECT COUNT(*)
                 FROM [application]
                 WHERE [resource-name] = @appName";
 
-            string sqlCheckNewNameExists = @"
+            string sqlCheckNewNameExists =
+                @"
                 SELECT COUNT(*)
                 FROM [application]
                 WHERE [resource-name] = @newAppName";
 
-            string sqlUpdate = @"
+            string sqlUpdate =
+                @"
                 UPDATE [application]
                 SET [resource-name] = @newResourceName
                 WHERE [resource-name] = @oldResourceName";
@@ -341,7 +358,8 @@ namespace SOMOID.Controllers
                     if (rowsAffected > 0)
                     {
                         // Buscar dados atualizados
-                        string sqlGetUpdated = @"
+                        string sqlGetUpdated =
+                            @"
                             SELECT [resource-name],
                                    [creation-datetime],
                                    [res-type]
@@ -360,22 +378,26 @@ namespace SOMOID.Controllers
                             {
                                 ResourceName = (string)readerUpdated["resource-name"],
                                 CreationDatetime = (DateTime)readerUpdated["creation-datetime"],
-                                ResType = (string)readerUpdated["res-type"]
+                                ResType = (string)readerUpdated["res-type"],
                             };
                         }
 
                         var responseValue = new
                         {
                             resourceName = updatedApp.ResourceName,
-                            creationDatetime = updatedApp.CreationDatetime.ToString("yyyy-MM-ddTHH:mm:ss"),
-                            resType = updatedApp.ResType
+                            creationDatetime = updatedApp.CreationDatetime.ToString(
+                                "yyyy-MM-ddTHH:mm:ss"
+                            ),
+                            resType = updatedApp.ResType,
                         };
 
                         return Ok(responseValue);
                     }
                     else
                     {
-                        return InternalServerError(new Exception("Falha ao atualizar application."));
+                        return InternalServerError(
+                            new Exception("Falha ao atualizar application.")
+                        );
                     }
                 }
             }
@@ -405,12 +427,14 @@ namespace SOMOID.Controllers
             var conn = new SqlConnection(connection);
 
             // Queries para validar e deletar em cascata
-            string sqlCheckExists = @"
+            string sqlCheckExists =
+                @"
                 SELECT COUNT(*)
                 FROM [application]
                 WHERE [resource-name] = @appName";
 
-            string sqlDelete = @"
+            string sqlDelete =
+                @"
                 DELETE ci
                 FROM [content-instance] ci
                 JOIN [container] c ON c.[resource-name] = ci.[container-resource-name]
@@ -446,7 +470,8 @@ namespace SOMOID.Controllers
                     // Portanto, é necessário executar cada DELETE individualmente
 
                     // 2.1) Deletar content-instances
-                    string sqlDeleteContentInstances = @"
+                    string sqlDeleteContentInstances =
+                        @"
                         DELETE ci
                         FROM [content-instance] ci
                         JOIN [container] c ON c.[resource-name] = ci.[container-resource-name]
@@ -457,7 +482,8 @@ namespace SOMOID.Controllers
                     cmdDeleteCI.ExecuteNonQuery();
 
                     // 2.2) Deletar subscriptions
-                    string sqlDeleteSubscriptions = @"
+                    string sqlDeleteSubscriptions =
+                        @"
                         DELETE s
                         FROM [subscription] s
                         JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
@@ -468,7 +494,8 @@ namespace SOMOID.Controllers
                     cmdDeleteSub.ExecuteNonQuery();
 
                     // 2.3) Deletar containers
-                    string sqlDeleteContainers = @"
+                    string sqlDeleteContainers =
+                        @"
                         DELETE [container]
                         WHERE [application-resource-name] = @appName";
 
@@ -477,7 +504,8 @@ namespace SOMOID.Controllers
                     cmdDeleteCont.ExecuteNonQuery();
 
                     // 2.4) Deletar application
-                    string sqlDeleteApp = @"
+                    string sqlDeleteApp =
+                        @"
                         DELETE [application]
                         WHERE [resource-name] = @appName";
 

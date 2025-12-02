@@ -7,12 +7,11 @@ namespace SOMOID.Models
 {
     public class ContentInstance
     {
-       public string ResourceName { get; set; }
-       public DateTime CreationDatetime { get; set; }
-       public string ContainerResourceName { get; set; }
-       public string ResType { get; set; }
-       public string ContentType { get; set; }
-       public string Content { get; set; }
-
+        public string ResourceName { get; set; }
+        public DateTime CreationDatetime { get; set; }
+        public string ContainerResourceName { get; set; }
+        public string ResType { get; set; }
+        public string ContentType { get; set; }
+        public string Content { get; set; }
     }
 }

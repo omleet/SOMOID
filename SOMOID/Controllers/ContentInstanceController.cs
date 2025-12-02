@@ -1,13 +1,13 @@
-﻿using SOMOID.Models;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Data.SqlClient;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
-using System.Data.SqlClient;
 using Api.Routing;
+using SOMOID.Models;
 
 namespace SOMOID.Controllers
 {
@@ -15,7 +15,7 @@ namespace SOMOID.Controllers
     /// Controlador para gerir Content-Instances no middleware SOMIOD.
     /// Uma content-instance representa um registo de dados criado num container.
     /// </summary>
-    [RoutePrefix("api/somiod")]
+    [RoutePrefix("api/somiod/cint")]
     public class ContentInstanceController : ApiController
     {
         string connection = Properties.Settings.Default.ConnectionStr;
@@ -32,64 +32,23 @@ namespace SOMOID.Controllers
         /// Exemplo de retorno:
         /// ["/api/somiod/app1/cont1/ci1", "/api/somiod/app1/cont1/ci2", "/api/somiod/app1/cont2/ci1"]
         /// </remarks>
-        [HttpGet]
-        [Route("{appName}")] 
+        //[HttpGet]
+        //[Route("{appName}")]
         //[GetRoute("{appName}")]
         //[Route("{appName}/content-instances")]
-        public IHttpActionResult DiscoverContentInstances(string appName)
-        {
-            IEnumerable<string> headerValues;
-            if (!Request.Headers.TryGetValues("somiod-discovery", out headerValues) ||
-                !headerValues.Any(h => h == "content-instance"))
-            {
-                return NotFound();
-            }
+        //public IHttpActionResult DiscoverContentInstances(string appName)
+        //{
+        //    IEnumerable<string> headerValues;
+        //    if (
+        //        !Request.Headers.TryGetValues("somiod-discovery", out headerValues)
+        //        || !headerValues.Any(h => h == "content-instance")
+        //    )
+        //    {
+        //        return NotFound();
+        //    }
 
-            var paths = new List<string>();
-            var conn = new SqlConnection(connection);
-
-            string sql = @"
-                SELECT a.[resource-name] AS appName,
-                       c.[resource-name] AS contName,
-                       ci.[resource-name] AS ciName
-                FROM [content-instance] ci
-                JOIN [container] c ON c.[resource-name] = ci.[container-resource-name]
-                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                WHERE a.[resource-name] = @appName
-                ORDER BY a.[resource-name], c.[resource-name], ci.[creation-datetime]";
-
-            var cmd = new SqlCommand(sql, conn);
-            cmd.Parameters.AddWithValue("@appName", appName);
-
-            try
-            {
-                using (conn)
-                {
-                    conn.Open();
-                    var reader = cmd.ExecuteReader();
-                    using (cmd)
-                    {
-                        using (reader)
-                        {
-                            while (reader.Read())
-                            {
-                                string aName = (string)reader["appName"];
-                                string cName = (string)reader["contName"];
-                                string ciName = (string)reader["ciName"];
-                                string path = $"/api/somiod/{aName}/{cName}/{ciName}";
-                                paths.Add(path);
-                            }
-                        }
-                    }
-                }
-
-                return Ok(paths);
-            }
-            catch (Exception ex)
-            {
-                return InternalServerError(ex);
-            }
-        }
+            
+        //}
 
         #endregion
 
@@ -108,12 +67,17 @@ namespace SOMOID.Controllers
         [HttpGet]
         [Route("{appName}/{containerName}/{ciName}")]
         //[GetRoute("{appName}/{containerName}/{ciName}")]
-        public IHttpActionResult GetContentInstance(string appName, string containerName, string ciName)
+        public IHttpActionResult GetContentInstance(
+            string appName,
+            string containerName,
+            string ciName
+        )
         {
             ContentInstance ci = null;
             var conn = new SqlConnection(connection);
 
-            string sql = @"
+            string sql =
+                @"
                 SELECT ci.[resource-name],
                        ci.[creation-datetime],
                        ci.[container-resource-name],
@@ -148,10 +112,11 @@ namespace SOMOID.Controllers
                                 {
                                     ResourceName = (string)reader["resource-name"],
                                     CreationDatetime = (DateTime)reader["creation-datetime"],
-                                    ContainerResourceName = (string)reader["container-resource-name"],
+                                    ContainerResourceName = (string)
+                                        reader["container-resource-name"],
                                     ResType = (string)reader["res-type"],
                                     ContentType = (string)reader["content-type"],
-                                    Content = (string)reader["content"]
+                                    Content = (string)reader["content"],
                                 };
                             }
                         }
@@ -197,14 +162,21 @@ namespace SOMOID.Controllers
         [HttpPost]
         [Route("{appName}/{containerName}")]
         //[PostRoute("{appName}/{containerName}")]
-        public IHttpActionResult CreateContentInstance(string appName, string containerName, [FromBody] ContentInstance value)
+        public IHttpActionResult CreateContentInstance(
+            string appName,
+            string containerName,
+            [FromBody] ContentInstance value
+        )
         {
             if (value == null)
                 return BadRequest("O corpo da requisição não pode estar vazio.");
 
             if (string.IsNullOrWhiteSpace(value.ResourceName))
-                value.ResourceName = "ci-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + "-" +
-                                     Guid.NewGuid().ToString().Substring(0, 8);
+                value.ResourceName =
+                    "ci-"
+                    + DateTime.UtcNow.ToString("yyyyMMddHHmmss")
+                    + "-"
+                    + Guid.NewGuid().ToString().Substring(0, 8);
 
             if (string.IsNullOrWhiteSpace(value.ContentType))
                 return BadRequest("O campo 'contentType' é obrigatório.");
@@ -218,20 +190,23 @@ namespace SOMOID.Controllers
 
             var conn = new SqlConnection(connection);
 
-            string sqlCheckParent = @"
+            string sqlCheckParent =
+                @"
                 SELECT COUNT(*)
                 FROM [container] c
                 JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
                 WHERE a.[resource-name] = @appName
                   AND c.[resource-name] = @contName";
 
-            string sqlCheckDuplicate = @"
+            string sqlCheckDuplicate =
+                @"
                 SELECT COUNT(*)
                 FROM [content-instance]
                 WHERE [resource-name] = @ciName
                   AND [container-resource-name] = @contName";
 
-            string sqlInsert = @"
+            string sqlInsert =
+                @"
                 INSERT INTO [content-instance]
                     ([resource-name], [creation-datetime], [container-resource-name],
                      [res-type], [content-type], [content])
@@ -264,7 +239,10 @@ namespace SOMOID.Controllers
                     var cmd = new SqlCommand(sqlInsert, conn);
                     cmd.Parameters.AddWithValue("@resourceName", value.ResourceName);
                     cmd.Parameters.AddWithValue("@creationDatetime", value.CreationDatetime);
-                    cmd.Parameters.AddWithValue("@containerResourceName", value.ContainerResourceName);
+                    cmd.Parameters.AddWithValue(
+                        "@containerResourceName",
+                        value.ContainerResourceName
+                    );
                     cmd.Parameters.AddWithValue("@resType", value.ResType);
                     cmd.Parameters.AddWithValue("@contentType", value.ContentType);
                     cmd.Parameters.AddWithValue("@content", value.Content);
@@ -275,14 +253,17 @@ namespace SOMOID.Controllers
                         var responseValue = new
                         {
                             resourceName = value.ResourceName,
-                            creationDatetime = value.CreationDatetime.ToString("yyyy-MM-ddTHH:mm:ss"),
+                            creationDatetime = value.CreationDatetime.ToString(
+                                "yyyy-MM-ddTHH:mm:ss"
+                            ),
                             containerResourceName = value.ContainerResourceName,
                             resType = value.ResType,
                             contentType = value.ContentType,
-                            content = value.Content
+                            content = value.Content,
                         };
 
-                        string locationUrl = $"/api/somiod/{appName}/{containerName}/{value.ResourceName}";
+                        string locationUrl =
+                            $"/api/somiod/{appName}/{containerName}/{value.ResourceName}";
                         return Created(locationUrl, responseValue);
                     }
 
@@ -309,11 +290,16 @@ namespace SOMOID.Controllers
         [HttpDelete]
         [Route("{appName}/{containerName}/{ciName}")]
         //[DeleteRoute("{appName}/{containerName}/{ciName}")]
-        public IHttpActionResult DeleteContentInstance(string appName, string containerName, string ciName)
+        public IHttpActionResult DeleteContentInstance(
+            string appName,
+            string containerName,
+            string ciName
+        )
         {
             var conn = new SqlConnection(connection);
 
-            string sqlCheckExists = @"
+            string sqlCheckExists =
+                @"
                 SELECT COUNT(*)
                 FROM [content-instance] ci
                 JOIN [container] c ON c.[resource-name] = ci.[container-resource-name]
@@ -322,7 +308,8 @@ namespace SOMOID.Controllers
                   AND c.[resource-name] = @contName
                   AND ci.[resource-name] = @ciName";
 
-            string sqlDelete = @"
+            string sqlDelete =
+                @"
                 DELETE ci
                 FROM [content-instance] ci
                 JOIN [container] c ON c.[resource-name] = ci.[container-resource-name]

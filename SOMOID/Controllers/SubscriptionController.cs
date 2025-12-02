@@ -1,13 +1,13 @@
-﻿using SOMOID.Models;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Data.SqlClient;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
-using System.Data.SqlClient;
 using Api.Routing;
+using SOMOID.Models;
 
 namespace SOMOID.Controllers
 {
@@ -15,7 +15,7 @@ namespace SOMOID.Controllers
     /// Controlador para gerenciar Subscriptions no middleware SOMIOD.
     /// As subscriptions permitem notificações quando content-instances são criadas ou deletadas em um container.
     /// </summary>
-    [RoutePrefix("api/somiod")]
+    [RoutePrefix("api/somiod/sub")]
     public class SubscriptionController : ApiController
     {
         string connection = Properties.Settings.Default.ConnectionStr;
@@ -33,62 +33,66 @@ namespace SOMOID.Controllers
         /// Exemplos de retorno:
         /// ["/api/somiod/app-x/cont-y/subs/sub-1", "/api/somiod/app-x/cont-y/subs/sub-2"]
         /// </remarks>
-        [HttpGet]
-        [Route("{appName}/{containerName}")]
-        //[GetRoute("{appName}/{containerName}")]
-        public IHttpActionResult DiscoverSubscriptions(string appName, string containerName)
-        {
-            // Verificar se o header somiod-discovery está presente
-            IEnumerable<string> headerValues;
-            if (!Request.Headers.TryGetValues("somiod-discovery", out headerValues) ||
-                !headerValues.Any(h => h == "subscription"))
-            {
-                return NotFound();
-            }
+        //[HttpGet]
+        //[Route("{appName}/{containerName}")]
+        ////[GetRoute("{appName}/{containerName}")]
+        //public IHttpActionResult DiscoverSubscriptions(string appName, string containerName)
+        //{
+        //    // Verificar se o header somiod-discovery está presente
+        //    IEnumerable<string> headerValues;
+        //    if (
+        //        !Request.Headers.TryGetValues("somiod-discovery", out headerValues)
+        //        || !headerValues.Any(h => h == "subscription")
+        //    )
+        //    {
+        //        return NotFound();
+        //    }
 
-            var subscriptionPaths = new List<string>();
-            var conn = new SqlConnection(connection);
+        //    var subscriptionPaths = new List<string>();
+        //    var conn = new SqlConnection(connection);
 
-            string query = @"
-                SELECT s.[resource-name]
-                FROM [subscription] s
-                JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
-                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                WHERE a.[resource-name] = @appName
-                AND c.[resource-name] = @containerName
-                ORDER BY s.[creation-datetime]";
+        //    string query =
+        //        @"
+        //        SELECT s.[resource-name]
+        //        FROM [subscription] s
+        //        JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
+        //        JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+        //        WHERE a.[resource-name] = @appName
+        //        AND c.[resource-name] = @containerName
+        //        ORDER BY s.[creation-datetime]";
 
-            var cmd = new SqlCommand(query, conn);
-            cmd.Parameters.AddWithValue("@appName", appName);
-            cmd.Parameters.AddWithValue("@containerName", containerName);
+        //    var cmd = new SqlCommand(query, conn);
+        //    cmd.Parameters.AddWithValue("@appName", appName);
+        //    cmd.Parameters.AddWithValue("@containerName", containerName);
 
-            try
-            {
-                using (conn)
-                {
-                    conn.Open();
-                    var reader = cmd.ExecuteReader();
-                    using (cmd)
-                    {
-                        using (reader)
-                        {
-                            while (reader.Read())
-                            {
-                                string subName = (string)reader["resource-name"];
-                                string path = $"/api/somiod/{appName}/{containerName}/subs/{subName}";
-                                subscriptionPaths.Add(path);
-                            }
-                        }
-                    }
-                }
+        //    try
+        //    {
+        //        using (conn)
+        //        {
+        //            conn.Open();
+        //            var reader = cmd.ExecuteReader();
+        //            using (cmd)
+        //            {
+        //                using (reader)
+        //                {
+        //                    while (reader.Read())
+        //                    {
+        //                        string subName = (string)reader["resource-name"];
+        //                        string path =
+        //                            $"/api/somiod/{appName}/{containerName}/subs/{subName}";
+        //                        subscriptionPaths.Add(path);
+        //                    }
+        //                }
+        //            }
+        //        }
 
-                return Ok(subscriptionPaths);
-            }
-            catch (Exception ex)
-            {
-                return InternalServerError(ex);
-            }
-        }
+        //        return Ok(subscriptionPaths);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return InternalServerError(ex);
+        //    }
+        //}
 
         #endregion
 
@@ -107,12 +111,17 @@ namespace SOMOID.Controllers
         [HttpGet]
         [Route("{appName}/{containerName}/subs/{subName}")]
         //[GetRoute("{appName}/{containerName}/subs/{subName}")]
-        public IHttpActionResult GetSubscriptionByName(string appName, string containerName, string subName)
+        public IHttpActionResult GetSubscriptionByName(
+            string appName,
+            string containerName,
+            string subName
+        )
         {
             Subscription sub = null;
             var conn = new SqlConnection(connection);
 
-            string getQuery = @"
+            string getQuery =
+                @"
                 SELECT s.[resource-name],
                        s.[creation-datetime],
                        s.[container-resource-name],
@@ -147,10 +156,11 @@ namespace SOMOID.Controllers
                                 {
                                     ResourceName = (string)reader["resource-name"],
                                     CreationDatetime = (DateTime)reader["creation-datetime"],
-                                    ContainerResourceName = (string)reader["container-resource-name"],
+                                    ContainerResourceName = (string)
+                                        reader["container-resource-name"],
                                     ResType = (string)reader["res-type"],
                                     Evt = (int)reader["evt"],
-                                    Endpoint = (string)reader["endpoint"]
+                                    Endpoint = (string)reader["endpoint"],
                                 };
                             }
                         }
@@ -192,7 +202,7 @@ namespace SOMOID.Controllers
         ///   "evt": 1,                              // Obrigatório: 1 (criação), 2 (deletion) ou 3 (ambos)
         ///   "endpoint": "http://example.com:8080" // Obrigatório: URL HTTP ou MQTT endpoint
         /// }
-        /// 
+        ///
         /// Exemplo de resposta (201 Created):
         /// {
         ///   "resourceName": "sub-notification-1",
@@ -206,7 +216,11 @@ namespace SOMOID.Controllers
         [HttpPost]
         [Route("{appName}/{containerName}")]
         //[PostRoute("{appName}/{containerName}")]
-        public IHttpActionResult CreateSubscription(string appName, string containerName, [FromBody] Subscription value)
+        public IHttpActionResult CreateSubscription(
+            string appName,
+            string containerName,
+            [FromBody] Subscription value
+        )
         {
             // Validação: body não pode estar vazio
             if (value == null)
@@ -214,7 +228,11 @@ namespace SOMOID.Controllers
 
             // Auto-gerar nome se não fornecido
             if (string.IsNullOrWhiteSpace(value.ResourceName))
-                value.ResourceName = "sub-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + "-" + Guid.NewGuid().ToString().Substring(0, 8);
+                value.ResourceName =
+                    "sub-"
+                    + DateTime.UtcNow.ToString("yyyyMMddHHmmss")
+                    + "-"
+                    + Guid.NewGuid().ToString().Substring(0, 8);
 
             // Validação: evt deve ser 1, 2 ou 3 (combinação)
             if (value.Evt != 1 && value.Evt != 2 && value.Evt != 3)
@@ -226,7 +244,9 @@ namespace SOMOID.Controllers
 
             // Validação: endpoint deve ser URL válida (HTTP ou MQTT)
             if (!IsValidEndpoint(value.Endpoint))
-                return BadRequest("O 'endpoint' deve ser uma URL válida (http://, https:// ou mqtt://).");
+                return BadRequest(
+                    "O 'endpoint' deve ser uma URL válida (http://, https:// ou mqtt://)."
+                );
 
             // Configurar propriedades automáticas
             value.ResType = "subscription";
@@ -234,20 +254,23 @@ namespace SOMOID.Controllers
             value.CreationDatetime = DateTime.UtcNow;
 
             // SQL Queries
-            string sqlCheckParent = @"
+            string sqlCheckParent =
+                @"
                 SELECT COUNT(*)
                 FROM [container] c 
                 JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
                 WHERE a.[resource-name] = @applicationName 
                 AND c.[resource-name] = @containerName";
 
-            string sqlCheckDuplicate = @"
+            string sqlCheckDuplicate =
+                @"
                 SELECT COUNT(*)
                 FROM [subscription]
                 WHERE [resource-name] = @subName
                 AND [container-resource-name] = @containerName";
 
-            string sqlInsert = @"
+            string sqlInsert =
+                @"
                 INSERT INTO [subscription]
                 ([resource-name], [creation-datetime], [container-resource-name], [res-type], [evt], [endpoint])
                 VALUES (@resourceName, @creationDatetime, @containerResourceName, @resType, @evt, @endpoint)";
@@ -282,7 +305,10 @@ namespace SOMOID.Controllers
                     var cmd = new SqlCommand(sqlInsert, conn);
                     cmd.Parameters.AddWithValue("@resourceName", value.ResourceName);
                     cmd.Parameters.AddWithValue("@creationDatetime", value.CreationDatetime);
-                    cmd.Parameters.AddWithValue("@containerResourceName", value.ContainerResourceName);
+                    cmd.Parameters.AddWithValue(
+                        "@containerResourceName",
+                        value.ContainerResourceName
+                    );
                     cmd.Parameters.AddWithValue("@resType", value.ResType);
                     cmd.Parameters.AddWithValue("@evt", value.Evt);
                     cmd.Parameters.AddWithValue("@endpoint", value.Endpoint);
@@ -295,14 +321,17 @@ namespace SOMOID.Controllers
                         var responseValue = new
                         {
                             resourceName = value.ResourceName,
-                            creationDatetime = value.CreationDatetime.ToString("yyyy-MM-ddTHH:mm:ss"),
+                            creationDatetime = value.CreationDatetime.ToString(
+                                "yyyy-MM-ddTHH:mm:ss"
+                            ),
                             containerResourceName = value.ContainerResourceName,
                             resType = value.ResType,
                             evt = value.Evt,
-                            endpoint = value.Endpoint
+                            endpoint = value.Endpoint,
                         };
 
-                        string locationUrl = $"/api/somiod/{appName}/{containerName}/subs/{value.ResourceName}";
+                        string locationUrl =
+                            $"/api/somiod/{appName}/{containerName}/subs/{value.ResourceName}";
                         return Created(locationUrl, responseValue);
                     }
                     else
@@ -335,12 +364,17 @@ namespace SOMOID.Controllers
         [HttpDelete]
         [Route("{appName}/{containerName}/subs/{subName}")]
         //[DeleteRoute("{appName}/{containerName}/subs/{subName}")]
-        public IHttpActionResult DeleteSubscription(string appName, string containerName, string subName)
+        public IHttpActionResult DeleteSubscription(
+            string appName,
+            string containerName,
+            string subName
+        )
         {
             var conn = new SqlConnection(connection);
 
             // Primeiro fazer GET para verificar se existe
-            string getQuery = @"
+            string getQuery =
+                @"
                 SELECT COUNT(*)
                 FROM [subscription] s
                 JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
@@ -349,7 +383,8 @@ namespace SOMOID.Controllers
                 AND c.[resource-name] = @containerName
                 AND s.[resource-name] = @subName";
 
-            string deleteQuery = @"
+            string deleteQuery =
+                @"
                 DELETE s
                 FROM [subscription] s
                 JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
@@ -411,7 +446,11 @@ namespace SOMOID.Controllers
             try
             {
                 // Verificar se começa com http://, https:// ou mqtt://
-                if (endpoint.StartsWith("http://") || endpoint.StartsWith("https://") || endpoint.StartsWith("mqtt://"))
+                if (
+                    endpoint.StartsWith("http://")
+                    || endpoint.StartsWith("https://")
+                    || endpoint.StartsWith("mqtt://")
+                )
                 {
                     // Tentar fazer parse como URI
                     var uri = new Uri(endpoint);

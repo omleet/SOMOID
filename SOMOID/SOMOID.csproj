@@ -135,6 +135,7 @@
     <Compile Include="Controllers\ApplicationController.cs" />
     <Compile Include="Controllers\ContainerController.cs" />
     <Compile Include="Controllers\ContentInstanceController.cs" />
+    <Compile Include="Controllers\DiscoveryController.cs" />
     <Compile Include="Controllers\SubscriptionController.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
@@ -149,6 +150,7 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
+    <Compile Include="Routing\Constraints.cs" />
     <Compile Include="Routing\GetRouteAttribute.cs" />
     <Compile Include="Routing\MethodConstraint.cs" />
     <Compile Include="Routing\MethodConstraintedRouteAttribute.cs" />

@@ -14,11 +14,13 @@ namespace Api.Routing
             Method = method;
         }
 
-        public bool Match(HttpRequestMessage request,
-                          IHttpRoute route,
-                          string parameterName,
-                          IDictionary<string, object> values,
-                          HttpRouteDirection routeDirection)
+        public bool Match(
+            HttpRequestMessage request,
+            IHttpRoute route,
+            string parameterName,
+            IDictionary<string, object> values,
+            HttpRouteDirection routeDirection
+        )
         {
             return request.Method == Method;
         }

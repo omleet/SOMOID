@@ -11,6 +11,5 @@ namespace SOMOID.Models
         public DateTime CreationDatetime { get; set; }
         public string ResType { get; set; }
         public string ApplicationResourceName { get; set; }
-
     }
 }

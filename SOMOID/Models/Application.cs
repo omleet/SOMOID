@@ -10,6 +10,5 @@ namespace SOMOID.Models
         public string ResourceName { get; set; }
         public string ResType { get; set; }
         public DateTime CreationDatetime { get; set; }
-
     }
 }
