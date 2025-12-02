@@ -149,6 +149,9 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
+    <Compile Include="Routing\GetRouteAttribute.cs" />
+    <Compile Include="Routing\MethodConstraint.cs" />
+    <Compile Include="Routing\MethodConstraintedRouteAttribute.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="App_Data\SOMOID.mdf" />
