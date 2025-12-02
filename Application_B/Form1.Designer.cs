@@ -34,7 +34,7 @@
             // 
             // light_on
             // 
-            this.light_on.Location = new System.Drawing.Point(54, 75);
+            this.light_on.Location = new System.Drawing.Point(74, 77);
             this.light_on.Name = "light_on";
             this.light_on.Size = new System.Drawing.Size(133, 62);
             this.light_on.TabIndex = 0;
@@ -44,7 +44,7 @@
             // 
             // light_off
             // 
-            this.light_off.Location = new System.Drawing.Point(54, 143);
+            this.light_off.Location = new System.Drawing.Point(74, 145);
             this.light_off.Name = "light_off";
             this.light_off.Size = new System.Drawing.Size(133, 62);
             this.light_off.TabIndex = 1;
@@ -56,7 +56,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(233, 279);
+            this.ClientSize = new System.Drawing.Size(276, 279);
             this.Controls.Add(this.light_off);
             this.Controls.Add(this.light_on);
             this.Name = "Form1";
