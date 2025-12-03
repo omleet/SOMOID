@@ -15,11 +15,10 @@ namespace SOMOID.Controllers
     /// Controlador para gerir Containers no middleware SOMIOD.
     /// Um container agrupa content-instances e subscriptions dentro de uma application.
     /// </summary>
-    [RoutePrefix("api/somiod/{container}")]
+    //[RoutePrefix("api/somiod/{container}")]
     public class ContainerController : ApiController
     {
         string connection = Properties.Settings.Default.ConnectionStr;
-
 
         #region GET Operations
 
@@ -33,8 +32,7 @@ namespace SOMOID.Controllers
         /// <response code="404">Application ou container não encontrado</response>
         /// <response code="500">Erro interno</response>
         [HttpGet]
-        [Route("{appName}/{containerName}")]
-        //[GetRoute("{appName}/{containerName}")]
+        [GetRoute("api/somiod/{appName}/{containerName}")]
         public IHttpActionResult GetContainer(string appName, string containerName)
         {
             Container cont = null;
@@ -114,8 +112,7 @@ namespace SOMOID.Controllers
         /// }
         /// </remarks>
         [HttpPost]
-        [PostRoute("{appName:regex(^[^/]+$)}")]
-        //[PostRoute("{appName}")]
+        [PostRoute("api/somiod/{appName:regex(^[^/]+$)}")]
         public IHttpActionResult CreateContainer(string appName, [FromBody] Container value)
         {
             if (value == null)
@@ -224,8 +221,7 @@ namespace SOMOID.Controllers
         /// <response code="409">Novo nome já existe na mesma application</response>
         /// <response code="500">Erro interno</response>
         [HttpPut]
-        [Route("{appName}/{containerName}")]
-        //[PutRoute("{appName}/{containerName}")]
+        [PutRoute("api/somiod/{appName}/{containerName}")]
         public IHttpActionResult UpdateContainer(
             string appName,
             string containerName,
@@ -357,8 +353,7 @@ namespace SOMOID.Controllers
         /// <param name="containerName">Nome do container</param>
         /// <returns>200 OK ou 404 NotFound</returns>
         [HttpDelete]
-        [Route("{appName}/{containerName}")]
-        //[DeleteRoute("{appName}/{containerName}")]
+        [DeleteRoute("api/somiod/{appName}/{containerName}")]
         public IHttpActionResult DeleteContainer(string appName, string containerName)
         {
             var conn = new SqlConnection(connection);

@@ -12,6 +12,8 @@ namespace SOMOID.Controllers
     {
         string connection = Properties.Settings.Default.ConnectionStr;
 
+        // works as of now
+
         #region Discovery Actions
 
         [HttpGet]
@@ -20,7 +22,12 @@ namespace SOMOID.Controllers
         {
             var paths = new List<string>();
             using (var conn = new SqlConnection(connection))
-            using (var cmd = new SqlCommand("SELECT [resource-name] FROM [application] ORDER BY [creation-datetime]", conn))
+            using (
+                var cmd = new SqlCommand(
+                    "SELECT [resource-name] FROM [application] ORDER BY [creation-datetime]",
+                    conn
+                )
+            )
             {
                 try
                 {
@@ -43,17 +50,26 @@ namespace SOMOID.Controllers
         }
 
         [HttpGet]
-        [GetRoute("{appName:regex(^[^/]+$):applicationexists}", discoveryResType: "container", false)]
+        [GetRoute(
+            "{appName:regex(^[^/]+$):applicationexists}",
+            discoveryResType: "container",
+            false
+        )]
         public IHttpActionResult DiscoverContainers(string appName)
         {
             var containerPaths = new List<string>();
             using (var conn = new SqlConnection(connection))
-            using (var cmd = new SqlCommand(@"
+            using (
+                var cmd = new SqlCommand(
+                    @"
                 SELECT c.[resource-name]
                 FROM [container] c
                 JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
                 WHERE a.[resource-name] = @appName
-                ORDER BY c.[creation-datetime]", conn))
+                ORDER BY c.[creation-datetime]",
+                    conn
+                )
+            )
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
 
@@ -78,12 +94,18 @@ namespace SOMOID.Controllers
         }
 
         [HttpGet]
-        [GetRoute("{appName:regex(^[^/]+$):applicationexists}", discoveryResType: "content-instance", false)]
+        [GetRoute(
+            "{appName:regex(^[^/]+$):applicationexists}",
+            discoveryResType: "content-instance",
+            false
+        )]
         public IHttpActionResult DiscoverContentInstances(string appName)
         {
             var paths = new List<string>();
             using (var conn = new SqlConnection(connection))
-            using (var cmd = new SqlCommand(@"
+            using (
+                var cmd = new SqlCommand(
+                    @"
                 SELECT a.[resource-name] AS appName,
                        c.[resource-name] AS contName,
                        ci.[resource-name] AS ciName
@@ -91,7 +113,10 @@ namespace SOMOID.Controllers
                 JOIN [container] c ON c.[resource-name] = ci.[container-resource-name]
                 JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
                 WHERE a.[resource-name] = @appName
-                ORDER BY a.[resource-name], c.[resource-name], ci.[creation-datetime]", conn))
+                ORDER BY a.[resource-name], c.[resource-name], ci.[creation-datetime]",
+                    conn
+                )
+            )
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
 
@@ -118,19 +143,28 @@ namespace SOMOID.Controllers
         }
 
         [HttpGet]
-        [GetRoute("{appName:regex(^[^/]+$):applicationexists}/{containerName:regex(^[^/]+$):containerexists}", discoveryResType: "subscription", false)]
+        [GetRoute(
+            "{appName:regex(^[^/]+$):applicationexists}/{containerName:regex(^[^/]+$):containerexists}",
+            discoveryResType: "subscription",
+            false
+        )]
         public IHttpActionResult DiscoverSubscriptions(string appName, string containerName)
         {
             var subscriptionPaths = new List<string>();
             using (var conn = new SqlConnection(connection))
-            using (var cmd = new SqlCommand(@"
+            using (
+                var cmd = new SqlCommand(
+                    @"
                 SELECT s.[resource-name]
                 FROM [subscription] s
                 JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
                 JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
                 WHERE a.[resource-name] = @appName
                   AND c.[resource-name] = @containerName
-                ORDER BY s.[creation-datetime]", conn))
+                ORDER BY s.[creation-datetime]",
+                    conn
+                )
+            )
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
                 cmd.Parameters.AddWithValue("@containerName", containerName);
@@ -143,7 +177,9 @@ namespace SOMOID.Controllers
                         while (reader.Read())
                         {
                             string subName = (string)reader["resource-name"];
-                            subscriptionPaths.Add($"/api/somiod/{appName}/{containerName}/subs/{subName}");
+                            subscriptionPaths.Add(
+                                $"/api/somiod/{appName}/{containerName}/subs/{subName}"
+                            );
                         }
                     }
                     return Ok(subscriptionPaths);

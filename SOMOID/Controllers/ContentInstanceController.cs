@@ -15,11 +15,10 @@ namespace SOMOID.Controllers
     /// Controlador para gerir Content-Instances no middleware SOMIOD.
     /// Uma content-instance representa um registo de dados criado num container.
     /// </summary>
-    [RoutePrefix("api/somiod/cint")]
+    // [RoutePrefix("api/somiod")]
     public class ContentInstanceController : ApiController
     {
         string connection = Properties.Settings.Default.ConnectionStr;
-
 
         #region GET Operations
 
@@ -34,8 +33,7 @@ namespace SOMOID.Controllers
         /// <response code="404">Application, container ou content-instance não encontrados</response>
         /// <response code="500">Erro interno</response>
         [HttpGet]
-        [Route("{appName}/{containerName}/{ciName}")]
-        //[GetRoute("{appName}/{containerName}/{ciName}")]
+        [GetRoute("api/somiod/{appName}/{containerName}/{ciName}")]
         public IHttpActionResult GetContentInstance(
             string appName,
             string containerName,
@@ -129,8 +127,9 @@ namespace SOMOID.Controllers
         /// }
         /// </remarks>
         [HttpPost]
-        [Route("{appName}/{containerName}")]
-        //[PostRoute("{appName}/{containerName}")]
+        [PostRoute(
+            "api/somiod/{appName:regex(^[^/]+$):applicationexists}/{containerName:regex(^[^/]+$):containerexists}"
+        )]
         public IHttpActionResult CreateContentInstance(
             string appName,
             string containerName,
@@ -257,8 +256,7 @@ namespace SOMOID.Controllers
         /// <param name="ciName">Nome da content-instance</param>
         /// <returns>200 OK ou 404 NotFound</returns>
         [HttpDelete]
-        [Route("{appName}/{containerName}/{ciName}")]
-        //[DeleteRoute("{appName}/{containerName}/{ciName}")]
+        [DeleteRoute("api/somiod/{appName}/{containerName}/{ciName}")]
         public IHttpActionResult DeleteContentInstance(
             string appName,
             string containerName,

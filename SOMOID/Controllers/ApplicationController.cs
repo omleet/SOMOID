@@ -32,6 +32,7 @@ namespace SOMOID.Controllers
         [GetRoute("api/somiod/{appName}")]
         public IHttpActionResult GetApplicationByName(string appName)
         {
+            // this is working
             Application app = null;
             var conn = new SqlConnection(connection);
             string getQuery =
@@ -100,9 +101,10 @@ namespace SOMOID.Controllers
         /// }
         /// </remarks>
         [HttpPost]
-        [Route("")]
+        [PostRoute("api/somiod")]
         public IHttpActionResult CreateApplication([FromBody] Application value)
         {
+            // working
             // Validação: body não pode estar vazio
             if (value == null)
                 return BadRequest("O corpo da requisição não pode estar vazio.");
@@ -195,7 +197,7 @@ namespace SOMOID.Controllers
         /// Vai renomear "lighting" para "lighting-v2"
         /// </remarks>
         [HttpPut]
-        [Route("{appName:regex(^[^/]+$):applicationexists}")]
+        [PutRoute("api/somiod{appName:regex(^[^/]+$):applicationexists}")]
         public IHttpActionResult UpdateApplication(string appName, [FromBody] Application value)
         {
             // Validação: body não pode estar vazio
@@ -306,7 +308,7 @@ namespace SOMOID.Controllers
         /// <response code="404">Application não encontrada</response>
         /// <response code="500">Erro interno do servidor</response>
         [HttpDelete]
-        [Route("{appName:regex(^[^/]+$):applicationexists}")]
+        [DeleteRoute("api/somiod/{appName:regex(^[^/]+$):applicationexists}")]
         public IHttpActionResult DeleteApplication(string appName)
         {
             var conn = new SqlConnection(connection);

@@ -15,86 +15,9 @@ namespace SOMOID.Controllers
     /// Controlador para gerenciar Subscriptions no middleware SOMIOD.
     /// As subscriptions permitem notificações quando content-instances são criadas ou deletadas em um container.
     /// </summary>
-    [RoutePrefix("api/somiod/sub")]
     public class SubscriptionController : ApiController
     {
         string connection = Properties.Settings.Default.ConnectionStr;
-
-        #region Discovery Operation
-
-        /// <summary>
-        /// Descobre subscriptions em um container específico.
-        /// Deve incluir o header "somiod-discovery: subscription" para ativar a operação de discovery.
-        /// </summary>
-        /// <param name="appName">Nome do aplicativo</param>
-        /// <param name="containerName">Nome do container</param>
-        /// <returns>Lista de caminhos para todas as subscriptions encontradas</returns>
-        /// <remarks>
-        /// Exemplos de retorno:
-        /// ["/api/somiod/app-x/cont-y/subs/sub-1", "/api/somiod/app-x/cont-y/subs/sub-2"]
-        /// </remarks>
-        //[HttpGet]
-        //[Route("{appName}/{containerName}")]
-        ////[GetRoute("{appName}/{containerName}")]
-        //public IHttpActionResult DiscoverSubscriptions(string appName, string containerName)
-        //{
-        //    // Verificar se o header somiod-discovery está presente
-        //    IEnumerable<string> headerValues;
-        //    if (
-        //        !Request.Headers.TryGetValues("somiod-discovery", out headerValues)
-        //        || !headerValues.Any(h => h == "subscription")
-        //    )
-        //    {
-        //        return NotFound();
-        //    }
-
-        //    var subscriptionPaths = new List<string>();
-        //    var conn = new SqlConnection(connection);
-
-        //    string query =
-        //        @"
-        //        SELECT s.[resource-name]
-        //        FROM [subscription] s
-        //        JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
-        //        JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-        //        WHERE a.[resource-name] = @appName
-        //        AND c.[resource-name] = @containerName
-        //        ORDER BY s.[creation-datetime]";
-
-        //    var cmd = new SqlCommand(query, conn);
-        //    cmd.Parameters.AddWithValue("@appName", appName);
-        //    cmd.Parameters.AddWithValue("@containerName", containerName);
-
-        //    try
-        //    {
-        //        using (conn)
-        //        {
-        //            conn.Open();
-        //            var reader = cmd.ExecuteReader();
-        //            using (cmd)
-        //            {
-        //                using (reader)
-        //                {
-        //                    while (reader.Read())
-        //                    {
-        //                        string subName = (string)reader["resource-name"];
-        //                        string path =
-        //                            $"/api/somiod/{appName}/{containerName}/subs/{subName}";
-        //                        subscriptionPaths.Add(path);
-        //                    }
-        //                }
-        //            }
-        //        }
-
-        //        return Ok(subscriptionPaths);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return InternalServerError(ex);
-        //    }
-        //}
-
-        #endregion
 
         #region GET Operations
 
@@ -109,8 +32,7 @@ namespace SOMOID.Controllers
         /// <response code="404">Subscription, container ou aplicativo não encontrado</response>
         /// <response code="500">Erro interno do servidor</response>
         [HttpGet]
-        [Route("{appName}/{containerName}/subs/{subName}")]
-        //[GetRoute("{appName}/{containerName}/subs/{subName}")]
+        [GetRoute("api/somiod/{appName}/{containerName}/subs/{subName}")]
         public IHttpActionResult GetSubscriptionByName(
             string appName,
             string containerName,
@@ -214,8 +136,7 @@ namespace SOMOID.Controllers
         /// }
         /// </remarks>
         [HttpPost]
-        [Route("{appName}/{containerName}")]
-        //[PostRoute("{appName}/{containerName}")]
+        [PostRoute("api/somiod/{appName}/{containerName}/subs")]
         public IHttpActionResult CreateSubscription(
             string appName,
             string containerName,
@@ -362,8 +283,7 @@ namespace SOMOID.Controllers
         /// <response code="404">Subscription, container ou aplicativo não encontrado</response>
         /// <response code="500">Erro interno do servidor</response>
         [HttpDelete]
-        [Route("{appName}/{containerName}/subs/{subName}")]
-        //[DeleteRoute("{appName}/{containerName}/subs/{subName}")]
+        [DeleteRoute("api/somiod/{appName}/{containerName}/subs/{subName}")]
         public IHttpActionResult DeleteSubscription(
             string appName,
             string containerName,
