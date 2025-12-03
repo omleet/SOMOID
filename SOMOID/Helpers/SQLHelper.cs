@@ -252,7 +252,7 @@ namespace SOMOID.Helpers
             return subCount;
         }
 
-        public int InsertNewSubscription(string resourceName, DateTime creationTimeDate, string containerName, string resType, string evt, string endpoint)
+        public int InsertNewSubscription(string resourceName, DateTime creationTimeDate, string containerName, string resType, int evt, string endpoint)
         {
             int rowsAffected = 0;
             string sqlInsert =

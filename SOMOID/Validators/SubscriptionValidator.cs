@@ -44,10 +44,36 @@ namespace SOMOID.Validators
             return errors;
         }
 
+
+        /// <summary>
+        /// Valida se uma string é um endpoint válido (HTTP ou MQTT).
+        /// </summary>
+        /// <param name="endpoint">String a validar</param>
+        /// <returns>true se é um endpoint válido, false caso contrário</returns>
         private bool IsValidEndpoint(string endpoint)
         {
-            return Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) &&
-                   (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == "mqtt");
+            if (string.IsNullOrWhiteSpace(endpoint))
+                return false;
+
+            try
+            {
+                // Verificar se começa com http://, https:// ou mqtt://
+                if (
+                    endpoint.StartsWith("http://")
+                    || endpoint.StartsWith("https://")
+                    || endpoint.StartsWith("mqtt://")
+                )
+                {
+                    // Tentar fazer parse como URI
+                    var uri = new Uri(endpoint);
+                    return true;
+                }
+                return false;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 

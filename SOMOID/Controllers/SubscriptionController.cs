@@ -108,15 +108,7 @@ namespace SOMOID.Controllers
             value.ResType = "subscription";
             value.ContainerResourceName = containerName;
             value.CreationDatetime = DateTime.UtcNow;
-
-            // SQL Queries
-           
-            
-
-           
-
-            SqlConnection conn = new SqlConnection(connection);
-
+   
             try
             {
                 int containerCount = SQLHelperInstance.CheckIfSubscriptionParentExists(appName, containerName);
@@ -242,39 +234,5 @@ namespace SOMOID.Controllers
 
         #endregion
 
-        #region Helper Methods
-
-        /// <summary>
-        /// Valida se uma string é um endpoint válido (HTTP ou MQTT).
-        /// </summary>
-        /// <param name="endpoint">String a validar</param>
-        /// <returns>true se é um endpoint válido, false caso contrário</returns>
-        private bool IsValidEndpoint(string endpoint)
-        {
-            if (string.IsNullOrWhiteSpace(endpoint))
-                return false;
-
-            try
-            {
-                // Verificar se começa com http://, https:// ou mqtt://
-                if (
-                    endpoint.StartsWith("http://")
-                    || endpoint.StartsWith("https://")
-                    || endpoint.StartsWith("mqtt://")
-                )
-                {
-                    // Tentar fazer parse como URI
-                    var uri = new Uri(endpoint);
-                    return true;
-                }
-                return false;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        #endregion
     }
 }
