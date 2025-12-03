@@ -20,37 +20,6 @@ namespace SOMOID.Controllers
     {
         string connection = Properties.Settings.Default.ConnectionStr;
 
-        #region Discovery Operation
-
-        /// <summary>
-        /// Descobre todas as content-instances de uma application (recursivamente pelos containers).
-        /// Requer o header "somiod-discovery: content-instance".
-        /// </summary>
-        /// <param name="appName">Nome da application</param>
-        /// <returns>Lista de paths para todas as content-instances dessa application</returns>
-        /// <remarks>
-        /// Exemplo de retorno:
-        /// ["/api/somiod/app1/cont1/ci1", "/api/somiod/app1/cont1/ci2", "/api/somiod/app1/cont2/ci1"]
-        /// </remarks>
-        //[HttpGet]
-        //[Route("{appName}")]
-        //[GetRoute("{appName}")]
-        //[Route("{appName}/content-instances")]
-        //public IHttpActionResult DiscoverContentInstances(string appName)
-        //{
-        //    IEnumerable<string> headerValues;
-        //    if (
-        //        !Request.Headers.TryGetValues("somiod-discovery", out headerValues)
-        //        || !headerValues.Any(h => h == "content-instance")
-        //    )
-        //    {
-        //        return NotFound();
-        //    }
-
-            
-        //}
-
-        #endregion
 
         #region GET Operations
 
