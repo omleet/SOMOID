@@ -7,6 +7,8 @@ using System.Net;
 using System.Net.Http;
 using System.Web.Http;
 using Api.Routing;
+using SOMOID.Helpers;
+using SOMOID.Validators;
 using SOMOID.Models;
 
 namespace SOMOID.Controllers
@@ -17,6 +19,7 @@ namespace SOMOID.Controllers
     /// </summary>
     public class SubscriptionController : ApiController
     {
+        private SQLHelper SQLHelperInstance = new SQLHelper();
         string connection = Properties.Settings.Default.ConnectionStr;
 
         #region GET Operations
@@ -39,59 +42,10 @@ namespace SOMOID.Controllers
             string subName
         )
         {
-            Subscription sub = null;
-            var conn = new SqlConnection(connection);
-
-            string getQuery =
-                @"
-                SELECT s.[resource-name],
-                       s.[creation-datetime],
-                       s.[container-resource-name],
-                       s.[res-type],
-                       s.[evt],
-                       s.[endpoint]
-                FROM [subscription] s
-                JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
-                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                WHERE a.[resource-name] = @appName
-                AND c.[resource-name] = @containerName
-                AND s.[resource-name] = @subName";
-
-            var cmd = new SqlCommand(getQuery, conn);
-            cmd.Parameters.AddWithValue("@appName", appName);
-            cmd.Parameters.AddWithValue("@containerName", containerName);
-            cmd.Parameters.AddWithValue("@subName", subName);
-
-            try
-            {
-                using (conn)
-                {
-                    conn.Open();
-                    var reader = cmd.ExecuteReader();
-                    using (cmd)
-                    {
-                        using (reader)
-                        {
-                            if (reader.Read())
-                            {
-                                sub = new Subscription
-                                {
-                                    ResourceName = (string)reader["resource-name"],
-                                    CreationDatetime = (DateTime)reader["creation-datetime"],
-                                    ContainerResourceName = (string)
-                                        reader["container-resource-name"],
-                                    ResType = (string)reader["res-type"],
-                                    Evt = (int)reader["evt"],
-                                    Endpoint = (string)reader["endpoint"],
-                                };
-                            }
-                        }
-                    }
-                }
-
+            try {
+                var sub = SQLHelperInstance.GetSubscriptionByAppName(appName, containerName, subName);
                 if (sub == null)
                     return NotFound();
-
                 return Ok(sub);
             }
             catch (Exception ex)
@@ -130,7 +84,7 @@ namespace SOMOID.Controllers
         ///   "resourceName": "sub-notification-1",
         ///   "creationDatetime": "2025-12-02T19:47:00",
         ///   "containerResourceName": "cont-sensors",
-        ///   "resType": "subscription",
+        ///   "res-type": "subscription",
         ///   "evt": 1,
         ///   "endpoint": "http://example.com:8080/notify"
         /// }
@@ -143,31 +97,12 @@ namespace SOMOID.Controllers
             [FromBody] Subscription value
         )
         {
-            // Validação: body não pode estar vazio
-            if (value == null)
-                return BadRequest("O corpo da requisição não pode estar vazio.");
+            var validator = new SubscriptionValidator();
+            var errors = validator.Validate(value);
 
-            // Auto-gerar nome se não fornecido
-            if (string.IsNullOrWhiteSpace(value.ResourceName))
-                value.ResourceName =
-                    "sub-"
-                    + DateTime.UtcNow.ToString("yyyyMMddHHmmss")
-                    + "-"
-                    + Guid.NewGuid().ToString().Substring(0, 8);
+            if (errors.Any())
+                return Content(HttpStatusCode.BadRequest, new { errors });
 
-            // Validação: evt deve ser 1, 2 ou 3 (combinação)
-            if (value.Evt != 1 && value.Evt != 2 && value.Evt != 3)
-                return BadRequest("O campo 'evt' deve ser 1 (criação), 2 (deletion) ou 3 (ambos).");
-
-            // Validação: endpoint é obrigatório
-            if (string.IsNullOrWhiteSpace(value.Endpoint))
-                return BadRequest("O campo 'endpoint' é obrigatório.");
-
-            // Validação: endpoint deve ser URL válida (HTTP ou MQTT)
-            if (!IsValidEndpoint(value.Endpoint))
-                return BadRequest(
-                    "O 'endpoint' deve ser uma URL válida (http://, https:// ou mqtt://)."
-                );
 
             // Configurar propriedades automáticas
             value.ResType = "subscription";

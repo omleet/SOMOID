@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Web;
+using Newtonsoft.Json.Serialization;
+using SOMOID.Models;
 
 namespace SOMOID.Helpers
 {
@@ -115,13 +117,13 @@ namespace SOMOID.Helpers
                 using (
                     var cmd = new SqlCommand(
                         @"
-                SELECT s.[resource-name]
-                FROM [subscription] s
-                JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
-                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                WHERE a.[resource-name] = @appName
-                  AND c.[resource-name] = @containerName
-                ORDER BY s.[creation-datetime]",
+                    SELECT s.[resource-name]
+                    FROM [subscription] s
+                    JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
+                    JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+                    WHERE a.[resource-name] = @appName
+                    AND c.[resource-name] = @containerName
+                    ORDER BY s.[creation-datetime]",
                         conn
                     )
                 )
@@ -144,5 +146,57 @@ namespace SOMOID.Helpers
             }
             return subscriptionPaths;
         }
+
+        public Subscription GetSubscriptionByAppName(string appName, string containerName, string subName)
+        {
+
+            using (var conn = new SqlConnection(connection))
+            {
+                using (var cmd = new SqlCommand(
+                    @"
+            SELECT s.[resource-name],
+                   s.[creation-datetime],
+                   s.[container-resource-name],
+                   s.[res-type],
+                   s.[evt],
+                   s.[endpoint]
+            FROM [subscription] s
+            JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
+            JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+            WHERE a.[resource-name] = @appName
+              AND c.[resource-name] = @containerName
+              AND s.[resource-name] = @subName",
+                    conn))
+                {
+                    cmd.Parameters.AddWithValue("@appName", appName);
+                    cmd.Parameters.AddWithValue("@containerName", containerName);
+                    cmd.Parameters.AddWithValue("@subName", subName);
+
+                    conn.Open();
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            Subscription sub=  new Subscription
+                            {
+                                ResourceName = (string)reader["resource-name"],
+                                CreationDatetime = (DateTime)reader["creation-datetime"],
+                                ContainerResourceName = (string)reader["container-resource-name"],
+                                ResType = (string)reader["res-type"],
+                                Evt = (int)reader["evt"],
+                                Endpoint = (string)reader["endpoint"]
+                            };
+                            return sub;
+                            
+                        }
+                    }
+                }
+            }
+            return null;
+
+        }
+
+
     }
 }

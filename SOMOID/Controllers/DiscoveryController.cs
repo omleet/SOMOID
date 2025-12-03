@@ -1,21 +1,16 @@
 using System;
 using System.Collections.Generic;
-using System.Data.SqlClient;
-using System.Linq;
 using System.Web.Http;
 using Api.Routing;
 using SOMOID.Helpers;
-using SOMOID.Models;
+
 
 namespace SOMOID.Controllers
 {
     public class DiscoveryController : ApiController
     {
         private SQLHelper SQLHelperInstance = new SQLHelper();
-        string connection = Properties.Settings.Default.ConnectionStr;
-
-        // works as of now
-
+       
         #region Discovery Actions
 
         [HttpGet]
@@ -24,9 +19,7 @@ namespace SOMOID.Controllers
         {
             try
             {
-                var path = new List<string>();
-                path = SQLHelperInstance.GetAllApplications();
-                return Ok(path);
+                return Ok(SQLHelperInstance.GetAllApplications());
             }catch (Exception ex)
             {
                 return InternalServerError(ex);
@@ -44,7 +37,6 @@ namespace SOMOID.Controllers
             try
             {
                 return Ok(SQLHelperInstance.GetAllContainers(appName));
-
             } catch (Exception ex)
             {
                 return InternalServerError(ex);
