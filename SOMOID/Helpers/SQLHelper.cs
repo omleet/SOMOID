@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Web;
+using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
 using SOMOID.Models;
 
@@ -198,5 +200,88 @@ namespace SOMOID.Helpers
         }
 
 
+        public int CheckIfSubscriptionParentExists(string appName, string containerName)
+        {
+            int containerCount = 0;
+            string sqlCheckParent =
+               @"
+                SELECT COUNT(*)
+                FROM [container] c 
+                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+                WHERE a.[resource-name] = @applicationName 
+                AND c.[resource-name] = @containerName";
+            
+            using (var conn = new SqlConnection(connection))
+            {
+                using (conn)
+                {
+                    conn.Open();
+                    var cmdCheckParent = new SqlCommand(sqlCheckParent, conn);
+                    cmdCheckParent.Parameters.AddWithValue("@applicationName", appName);
+                    cmdCheckParent.Parameters.AddWithValue("@containerName", containerName);
+
+                    containerCount = (int)cmdCheckParent.ExecuteScalar();
+                }
+            }
+            return containerCount;
+        }
+        
+        public int CheckIfSubscriptionAlreadyExists(string subName, string containerName)
+        {
+            int subCount = 0;
+            string sqlCheckDuplicate =
+                @"
+                SELECT COUNT(*)
+                FROM [subscription]
+                WHERE [resource-name] = @subName
+                AND [container-resource-name] = @containerName";
+
+            using (var conn = new SqlConnection(connection))
+            {
+                using (conn)
+                {
+                    conn.Open();
+                    var cmdCheckDuplicate = new SqlCommand(sqlCheckDuplicate, conn);
+                    cmdCheckDuplicate.Parameters.AddWithValue("@subName", subName);
+                    cmdCheckDuplicate.Parameters.AddWithValue("@containerName", containerName);
+
+                    subCount = (int)cmdCheckDuplicate.ExecuteScalar();
+                }
+            }
+
+            return subCount;
+        }
+
+        public int InsertNewSubscription(string resourceName, DateTime creationTimeDate, string containerName, string resType, string evt, string endpoint)
+        {
+            int rowsAffected = 0;
+            string sqlInsert =
+               @"
+                INSERT INTO [subscription]
+                ([resource-name], [creation-datetime], [container-resource-name], [res-type], [evt], [endpoint])
+                VALUES (@resourceName, @creationDatetime, @containerResourceName, @resType, @evt, @endpoint)";
+
+
+            using (var conn = new SqlConnection(connection))
+            {
+                using (conn)
+                {
+                    conn.Open();
+                    var cmd = new SqlCommand(sqlInsert, conn);
+                    cmd.Parameters.AddWithValue("@resourceName", resourceName);
+                    cmd.Parameters.AddWithValue("@creationDatetime", creationTimeDate);
+                    cmd.Parameters.AddWithValue(
+                        "@containerResourceName",
+                        containerName
+                    );
+                    cmd.Parameters.AddWithValue("@resType", resType);
+                    cmd.Parameters.AddWithValue("@evt", evt);
+                    cmd.Parameters.AddWithValue("@endpoint", endpoint);
+
+                    rowsAffected = cmd.ExecuteNonQuery();
+                }
+            }
+            return rowsAffected;
+        }
     }
 }

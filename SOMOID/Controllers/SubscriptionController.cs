@@ -110,91 +110,47 @@ namespace SOMOID.Controllers
             value.CreationDatetime = DateTime.UtcNow;
 
             // SQL Queries
-            string sqlCheckParent =
-                @"
-                SELECT COUNT(*)
-                FROM [container] c 
-                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                WHERE a.[resource-name] = @applicationName 
-                AND c.[resource-name] = @containerName";
+           
+            
 
-            string sqlCheckDuplicate =
-                @"
-                SELECT COUNT(*)
-                FROM [subscription]
-                WHERE [resource-name] = @subName
-                AND [container-resource-name] = @containerName";
-
-            string sqlInsert =
-                @"
-                INSERT INTO [subscription]
-                ([resource-name], [creation-datetime], [container-resource-name], [res-type], [evt], [endpoint])
-                VALUES (@resourceName, @creationDatetime, @containerResourceName, @resType, @evt, @endpoint)";
+           
 
             SqlConnection conn = new SqlConnection(connection);
 
             try
             {
-                using (conn)
+                int containerCount = SQLHelperInstance.CheckIfSubscriptionParentExists(appName, containerName);
+                if (containerCount == 0)
+                    return NotFound();
+
+                int subCount = SQLHelperInstance.CheckIfSubscriptionAlreadyExists(value.ResourceName, containerName);
+                if (subCount > 0)
+                    return Conflict();
+
+                int rowsAffected = SQLHelperInstance.InsertNewSubscription(value.ResourceName, value.CreationDatetime, containerName, value.ResType, value.Evt, value.Endpoint);
+                if (rowsAffected == 0)
                 {
-                    conn.Open();
-
-                    // 1) Verificar se app + container existem
-                    var cmdCheckParent = new SqlCommand(sqlCheckParent, conn);
-                    cmdCheckParent.Parameters.AddWithValue("@applicationName", appName);
-                    cmdCheckParent.Parameters.AddWithValue("@containerName", containerName);
-
-                    int containerCount = (int)cmdCheckParent.ExecuteScalar();
-                    if (containerCount == 0)
-                        return NotFound();
-
-                    // 2) Verificar se já existe subscription com este nome e container
-                    var cmdCheckDuplicate = new SqlCommand(sqlCheckDuplicate, conn);
-                    cmdCheckDuplicate.Parameters.AddWithValue("@subName", value.ResourceName);
-                    cmdCheckDuplicate.Parameters.AddWithValue("@containerName", containerName);
-
-                    int subCount = (int)cmdCheckDuplicate.ExecuteScalar();
-                    if (subCount > 0)
-                        return Conflict();
-
-                    // 3) Inserir a nova subscription
-                    var cmd = new SqlCommand(sqlInsert, conn);
-                    cmd.Parameters.AddWithValue("@resourceName", value.ResourceName);
-                    cmd.Parameters.AddWithValue("@creationDatetime", value.CreationDatetime);
-                    cmd.Parameters.AddWithValue(
-                        "@containerResourceName",
-                        value.ContainerResourceName
-                    );
-                    cmd.Parameters.AddWithValue("@resType", value.ResType);
-                    cmd.Parameters.AddWithValue("@evt", value.Evt);
-                    cmd.Parameters.AddWithValue("@endpoint", value.Endpoint);
-
-                    int rowsAffected = cmd.ExecuteNonQuery();
-
-                    if (rowsAffected > 0)
-                    {
-                        // Formatar o timestamp para ISO 8601
-                        var responseValue = new
-                        {
-                            resourceName = value.ResourceName,
-                            creationDatetime = value.CreationDatetime.ToString(
-                                "yyyy-MM-ddTHH:mm:ss"
-                            ),
-                            containerResourceName = value.ContainerResourceName,
-                            resType = value.ResType,
-                            evt = value.Evt,
-                            endpoint = value.Endpoint,
-                        };
-
-                        string locationUrl =
-                            $"/api/somiod/{appName}/{containerName}/subs/{value.ResourceName}";
-                        return Created(locationUrl, responseValue);
-                    }
-                    else
-                    {
-                        return InternalServerError(new Exception("Falha ao criar subscription."));
-                    }
+                    return InternalServerError(new Exception("Falha ao criar subscription."));
                 }
+                
+                var responseValue = new
+                {
+                    resourceName = value.ResourceName,
+                    creationDatetime = value.CreationDatetime.ToString(
+                        "yyyy-MM-ddTHH:mm:ss"
+                    ),
+                    containerResourceName = value.ContainerResourceName,
+                    resType = value.ResType,
+                    evt = value.Evt,
+                    endpoint = value.Endpoint,
+                };
+
+                string locationUrl =
+                    $"/api/somiod/{appName}/{containerName}/subs/{value.ResourceName}";
+
+                return Created(locationUrl, responseValue);
+                
+
             }
             catch (Exception ex)
             {
