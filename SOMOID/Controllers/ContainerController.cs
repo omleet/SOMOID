@@ -15,43 +15,11 @@ namespace SOMOID.Controllers
     /// Controlador para gerir Containers no middleware SOMIOD.
     /// Um container agrupa content-instances e subscriptions dentro de uma application.
     /// </summary>
-    [RoutePrefix("api/somiod/cont")]
+    [RoutePrefix("api/somiod/{container}")]
     public class ContainerController : ApiController
     {
         string connection = Properties.Settings.Default.ConnectionStr;
 
-        #region Discovery Operation
-
-        /// <summary>
-        /// Descobre todos os containers de uma application.
-        /// Requer o header "somiod-discovery: container".
-        /// </summary>
-        /// <param name="appName">Nome da application</param>
-        /// <returns>Lista de paths para todos os containers desta application</returns>
-        /// <remarks>
-        /// Exemplo de retorno:
-        /// ["/api/somiod/app1/cont1", "/api/somiod/app1/cont2"]
-        /// </remarks>
-        ////[HttpGet]
-        //[Route("{appName}")]
-        //[Route("{appName}/containers")]
-        ////[GetRoute("{appName}")]
-        //public IHttpActionResult DiscoverContainers(string appName)
-        //{
-        //    // Verificar header somiod-discovery
-        //    IEnumerable<string> headerValues;
-        //    if (
-        //        !Request.Headers.TryGetValues("somiod-discovery", out headerValues)
-        //        || !headerValues.Any(h => h == "container")
-        //    )
-        //    {
-        //        // Sem header de discovery, aqui não devolvemos GET-all
-        //        return NotFound();
-        //    }
-
-        //}
-
-        #endregion
 
         #region GET Operations
 
@@ -146,7 +114,7 @@ namespace SOMOID.Controllers
         /// }
         /// </remarks>
         [HttpPost]
-        [Route("{appName}")]
+        [PostRoute("{appName:regex(^[^/]+$)}")]
         //[PostRoute("{appName}")]
         public IHttpActionResult CreateContainer(string appName, [FromBody] Container value)
         {

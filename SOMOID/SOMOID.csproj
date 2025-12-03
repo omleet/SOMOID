@@ -150,6 +150,8 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
+    <Compile Include="Routing\ApplicationExistsConstraint.cs" />
+    <Compile Include="Routing\ContainerExistsConstraint.cs" />
     <Compile Include="Routing\Constraints.cs" />
     <Compile Include="Routing\GetRouteAttribute.cs" />
     <Compile Include="Routing\MethodConstraint.cs" />
@@ -210,6 +212,7 @@
     <Content Include="Views\Shared\_Layout.cshtml" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="Views\ApplicationExists\" />
     <Folder Include="Views\Application\" />
     <Folder Include="Views\Container\" />
     <Folder Include="Views\ContentInstance\" />

@@ -8,51 +8,15 @@ using SOMOID.Models;
 
 namespace SOMOID.Controllers
 {
-    [RoutePrefix("api/somiod")]
     public class DiscoveryController : ApiController
     {
         string connection = Properties.Settings.Default.ConnectionStr;
 
+        #region Discovery Actions
+
         [HttpGet]
-        [GetRoute("{appName?}/{containerName?}", "somiod-discovery")]
-        public IHttpActionResult Discover(string appName = null, string containerName = null)
-        {
-            IEnumerable<string> headers;
-            if (!Request.Headers.TryGetValues("somiod-discovery", out headers))
-                return BadRequest("Missing 'somiod-discovery' header");
-
-            var resType = headers.FirstOrDefault()?.ToLower();
-            if (resType == null)
-                return BadRequest("Invalid 'somiod-discovery' header");
-
-            switch (resType)
-            {
-                case "application":
-                    return DiscoverApplications();
-
-                case "container":
-                    if (appName == null)
-                        return BadRequest("appName is required for container discovery");
-                    return DiscoverAllContainers(appName);
-
-                case "content-instance":
-                    if (appName == null)
-                        return BadRequest("appName is required for content-instance discovery");
-                    return DiscoverAllContentInstances(appName);
-
-                case "subscription":
-                    if (appName == null || containerName == null)
-                        return BadRequest("appName and containerName are required for subscription discovery");
-                    return DiscoverAllSubscriptions(appName, containerName);
-
-                default:
-                    return BadRequest($"Unknown discovery type '{resType}'");
-            }
-        }
-
-        #region Private Discovery Methods
-
-        private IHttpActionResult DiscoverApplications()
+        [GetRoute("api/somiod", discoveryResType: "application", false)]
+        public IHttpActionResult DiscoverApplications()
         {
             var paths = new List<string>();
             using (var conn = new SqlConnection(connection))
@@ -78,7 +42,9 @@ namespace SOMOID.Controllers
             }
         }
 
-        private IHttpActionResult DiscoverAllContainers(string appName)
+        [HttpGet]
+        [GetRoute("{appName:regex(^[^/]+$):applicationexists}", discoveryResType: "container", false)]
+        public IHttpActionResult DiscoverContainers(string appName)
         {
             var containerPaths = new List<string>();
             using (var conn = new SqlConnection(connection))
@@ -111,7 +77,9 @@ namespace SOMOID.Controllers
             }
         }
 
-        private IHttpActionResult DiscoverAllContentInstances(string appName)
+        [HttpGet]
+        [GetRoute("{appName:regex(^[^/]+$):applicationexists}", discoveryResType: "content-instance", false)]
+        public IHttpActionResult DiscoverContentInstances(string appName)
         {
             var paths = new List<string>();
             using (var conn = new SqlConnection(connection))
@@ -149,7 +117,9 @@ namespace SOMOID.Controllers
             }
         }
 
-        private IHttpActionResult DiscoverAllSubscriptions(string appName, string containerName)
+        [HttpGet]
+        [GetRoute("{appName:regex(^[^/]+$):applicationexists}/{containerName:regex(^[^/]+$):containerexists}", discoveryResType: "subscription", false)]
+        public IHttpActionResult DiscoverSubscriptions(string appName, string containerName)
         {
             var subscriptionPaths = new List<string>();
             using (var conn = new SqlConnection(connection))
