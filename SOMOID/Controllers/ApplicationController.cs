@@ -15,77 +15,10 @@ namespace SOMOID.Controllers
     /// Controlador para gerenciar Applications no middleware SOMIOD.
     /// Uma application representa uma aplicação específica do mundo real no sistema.
     /// </summary>
-    [RoutePrefix("api/somiod/app")]
+    [RoutePrefix("api/somiod")]
     public class ApplicationController : ApiController
     {
         string connection = Properties.Settings.Default.ConnectionStr;
-
-        #region Discovery Operation
-
-        /// <summary>
-        /// Descobre todas as applications no sistema.
-        /// Deve incluir o header "somiod-discovery: application" para ativar a operação de discovery.
-        /// </summary>
-        /// <returns>Lista de caminhos para todas as applications encontradas</returns>
-        /// <remarks>
-        /// Exemplos de retorno:
-        /// ["/api/somiod/app-1", "/api/somiod/app-2", "/api/somiod/lighting"]
-        /// </remarks>
-        // [HttpGet]
-        // [Route("")]
-        //[GetRoute("")]
-        // public IHttpActionResult DiscoverApplications()
-        // {
-        //     // Verificar se o header somiod-discovery está presente
-        //     IEnumerable<string> headerValues;
-        //     if (
-        //         !Request.Headers.TryGetValues("somiod-discovery", out headerValues)
-        //         || !headerValues.Any(h => h == "application")
-        //     )
-        //     {
-        //         return NotFound();
-        //     }
-
-        //     var applicationPaths = new List<string>();
-        //     var conn = new SqlConnection(connection);
-
-        //     string query =
-        //         @"
-        //         SELECT [resource-name]
-        //         FROM [application]
-        //         ORDER BY [creation-datetime]";
-
-        //     var cmd = new SqlCommand(query, conn);
-
-        //     try
-        //     {
-        //         using (conn)
-        //         {
-        //             conn.Open();
-        //             var reader = cmd.ExecuteReader();
-        //             using (cmd)
-        //             {
-        //                 using (reader)
-        //                 {
-        //                     while (reader.Read())
-        //                     {
-        //                         string appName = (string)reader["resource-name"];
-        //                         string path = $"/api/somiod/{appName}";
-        //                         applicationPaths.Add(path);
-        //                     }
-        //                 }
-        //             }
-        //         }
-
-        //         return Ok(applicationPaths);
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         return InternalServerError(ex);
-        //     }
-        // }
-
-        #endregion
 
         #region GET Operations
 

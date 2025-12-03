@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Web.Http;
+using Api.Routing;
 using SOMOID.Models;
 
 namespace SOMOID.Controllers
@@ -13,7 +14,7 @@ namespace SOMOID.Controllers
         string connection = Properties.Settings.Default.ConnectionStr;
 
         [HttpGet]
-        [Route("{appName?}/{containerName?}")]
+        [GetRoute("{appName?}/{containerName?}", "somiod-discovery")]
         public IHttpActionResult Discover(string appName = null, string containerName = null)
         {
             IEnumerable<string> headers;
