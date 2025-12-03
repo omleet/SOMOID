@@ -4,12 +4,14 @@ using System.Data.SqlClient;
 using System.Linq;
 using System.Web.Http;
 using Api.Routing;
+using SOMOID.Helpers;
 using SOMOID.Models;
 
 namespace SOMOID.Controllers
 {
     public class DiscoveryController : ApiController
     {
+        private SQLHelper SQLHelperInstance = new SQLHelper();
         string connection = Properties.Settings.Default.ConnectionStr;
 
         // works as of now
@@ -20,32 +22,14 @@ namespace SOMOID.Controllers
         [GetRoute("api/somiod", discoveryResType: "application", false)]
         public IHttpActionResult DiscoverApplications()
         {
-            var paths = new List<string>();
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    "SELECT [resource-name] FROM [application] ORDER BY [creation-datetime]",
-                    conn
-                )
-            )
+            try
             {
-                try
-                {
-                    conn.Open();
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            string appName = (string)reader["resource-name"];
-                            paths.Add($"/api/somiod/{appName}");
-                        }
-                    }
-                    return Ok(paths);
-                }
-                catch (Exception ex)
-                {
-                    return InternalServerError(ex);
-                }
+                var path = new List<string>();
+                path = SQLHelperInstance.GetAllApplications();
+                return Ok(path);
+            }catch (Exception ex)
+            {
+                return InternalServerError(ex);
             }
         }
 
@@ -57,39 +41,13 @@ namespace SOMOID.Controllers
         )]
         public IHttpActionResult DiscoverContainers(string appName)
         {
-            var containerPaths = new List<string>();
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    @"
-                SELECT c.[resource-name]
-                FROM [container] c
-                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                WHERE a.[resource-name] = @appName
-                ORDER BY c.[creation-datetime]",
-                    conn
-                )
-            )
+            try
             {
-                cmd.Parameters.AddWithValue("@appName", appName);
+                return Ok(SQLHelperInstance.GetAllContainers(appName));
 
-                try
-                {
-                    conn.Open();
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            string contName = (string)reader["resource-name"];
-                            containerPaths.Add($"/api/somiod/{appName}/{contName}");
-                        }
-                    }
-                    return Ok(containerPaths);
-                }
-                catch (Exception ex)
-                {
-                    return InternalServerError(ex);
-                }
+            } catch (Exception ex)
+            {
+                return InternalServerError(ex);
             }
         }
 

@@ -140,6 +140,7 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
+    <Compile Include="Helpers\SQLHelper.cs" />
     <Compile Include="Models\Application.cs" />
     <Compile Include="Models\Container.cs" />
     <Compile Include="Models\ContentInstance.cs" />
@@ -187,6 +188,7 @@
     <Content Include="Scripts\bootstrap.esm.min.js" />
     <Content Include="Scripts\bootstrap.js" />
     <Content Include="Scripts\bootstrap.min.js" />
+    <Content Include="E2E\Tests.ps1" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -212,6 +214,7 @@
     <Content Include="Views\Shared\_Layout.cshtml" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="Scripts\NewFolder1\" />
     <Folder Include="Views\ApplicationExists\" />
     <Folder Include="Views\Application\" />
     <Folder Include="Views\Container\" />
