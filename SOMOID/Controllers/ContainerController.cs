@@ -141,13 +141,12 @@ namespace SOMOID.Controllers
             [FromBody] Container value
         )
         {
-            if (value == null)
-                return BadRequest("O corpo da requisição não pode estar vazio.");
-
-            if (string.IsNullOrWhiteSpace(value.ResourceName))
-                return BadRequest(
-                    "O campo 'resourceName' é obrigatório para atualizar o container."
-                );
+            var validator = new UpdateContainerValidator();
+            var errors = validator.Validate(value);
+            if (errors.Any())
+            {
+                return Content(HttpStatusCode.BadRequest, new { errors });
+            }
 
             if (value.ResourceName.Equals(containerName, StringComparison.OrdinalIgnoreCase))
                 return BadRequest("O novo resourceName deve ser diferente do atual.");
