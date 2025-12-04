@@ -1,9 +1,12 @@
 ﻿using System;
+using System.Linq;
 using System.Net;
 using System.Web.Http;
+using System.Web.Http.Validation.Validators;
 using Api.Routing;
 using SOMOID.Helpers;
 using SOMOID.Models;
+using SOMOID.Validators;
 
 namespace SOMOID.Controllers
 {
@@ -84,21 +87,12 @@ namespace SOMOID.Controllers
             [FromBody] ContentInstance value
         )
         {
-            if (value == null)
-                return BadRequest("O corpo da requisição não pode estar vazio.");
-
-            if (string.IsNullOrWhiteSpace(value.ResourceName))
-                value.ResourceName =
-                    "ci-"
-                    + DateTime.UtcNow.ToString("yyyyMMddHHmmss")
-                    + "-"
-                    + Guid.NewGuid().ToString().Substring(0, 8);
-
-            if (string.IsNullOrWhiteSpace(value.ContentType))
-                return BadRequest("O campo 'contentType' é obrigatório.");
-
-            if (string.IsNullOrWhiteSpace(value.Content))
-                return BadRequest("O campo 'content' é obrigatório.");
+            var validator = new CreateContentInstanceValidator();
+            var errors = validator.Validate(value);
+            if (errors.Any())
+            {
+                return Content(HttpStatusCode.BadRequest, new { errors });
+            }
 
             value.ResType = "content-instance";
             value.ContainerResourceName = containerName;
