@@ -24,13 +24,16 @@ namespace Api.Routing
                         conn.Open();
                         string query = @"
                             SELECT COUNT(*)
-                            FROM [container]
-                            WHERE [resource-name] = @containerName
-                              AND [application-resource-name] = @appName";
+                            FROM [container] c
+                            JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+                            WHERE c.[resource-name] = @containerName
+                              AND a.[resource-name] = @appName
+                              AND a.[res-type] = @activeResType";
                         using (SqlCommand cmd = new SqlCommand(query, conn))
                         {
                             cmd.Parameters.AddWithValue("@containerName", containerName);
                             cmd.Parameters.AddWithValue("@appName", appName);
+                            cmd.Parameters.AddWithValue("@activeResType", "application");
                             int count = (int)cmd.ExecuteScalar();
                             return count > 0;
                         }

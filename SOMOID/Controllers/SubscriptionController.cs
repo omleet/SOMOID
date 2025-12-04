@@ -1,10 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Data.SqlClient;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Web.Http;
 using Api.Routing;
 using SOMOID.Helpers;
@@ -19,8 +15,7 @@ namespace SOMOID.Controllers
     /// </summary>
     public class SubscriptionController : ApiController
     {
-        private SQLHelper SQLHelperInstance = new SQLHelper();
-        string connection = Properties.Settings.Default.ConnectionStr;
+        private readonly SQLHelper SQLHelperInstance = new SQLHelper();
 
         #region GET Operations
 
@@ -173,58 +168,16 @@ namespace SOMOID.Controllers
             string subName
         )
         {
-            var conn = new SqlConnection(connection);
-
-            // Primeiro fazer GET para verificar se existe
-            string getQuery =
-                @"
-                SELECT COUNT(*)
-                FROM [subscription] s
-                JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
-                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                WHERE a.[resource-name] = @appName
-                AND c.[resource-name] = @containerName
-                AND s.[resource-name] = @subName";
-
-            string deleteQuery =
-                @"
-                DELETE s
-                FROM [subscription] s
-                JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
-                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                WHERE a.[resource-name] = @appName
-                AND c.[resource-name] = @containerName
-                AND s.[resource-name] = @subName";
-
             try
             {
-                using (conn)
-                {
-                    conn.Open();
+                var sub = SQLHelperInstance.GetSubscriptionByAppName(appName, containerName, subName);
+                if (sub == null)
+                    return NotFound();
 
-                    // Verificar se existe
-                    var cmdGet = new SqlCommand(getQuery, conn);
-                    cmdGet.Parameters.AddWithValue("@appName", appName);
-                    cmdGet.Parameters.AddWithValue("@containerName", containerName);
-                    cmdGet.Parameters.AddWithValue("@subName", subName);
-
-                    int existsCount = (int)cmdGet.ExecuteScalar();
-                    if (existsCount == 0)
-                        return NotFound();
-
-                    // Deletar
-                    var cmdDelete = new SqlCommand(deleteQuery, conn);
-                    cmdDelete.Parameters.AddWithValue("@appName", appName);
-                    cmdDelete.Parameters.AddWithValue("@containerName", containerName);
-                    cmdDelete.Parameters.AddWithValue("@subName", subName);
-
-                    int rowsAffected = cmdDelete.ExecuteNonQuery();
-
-                    if (rowsAffected > 0)
-                        return Ok();
-                    else
-                        return NotFound();
-                }
+                var deleted = SQLHelperInstance.DeleteSubscription(appName, containerName, subName);
+                if (deleted)
+                    return Ok();
+                return NotFound();
             }
             catch (Exception ex)
             {

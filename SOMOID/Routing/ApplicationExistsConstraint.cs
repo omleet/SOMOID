@@ -25,10 +25,12 @@ namespace Api.Routing
                         string query = @"
                             SELECT COUNT(*)
                             FROM [application]
-                            WHERE [resource-name] = @appName";
+                            WHERE [resource-name] = @appName
+                              AND [res-type] = @activeResType";
                         using (SqlCommand cmd = new SqlCommand(query, conn))
                         {
                             cmd.Parameters.AddWithValue("@appName", appName);
+                            cmd.Parameters.AddWithValue("@activeResType", "application");
                             int count = (int)cmd.ExecuteScalar();
                             return count > 0;
                         }

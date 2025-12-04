@@ -63,9 +63,9 @@ namespace Application_A.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap luz_off {
+        internal static System.Drawing.Bitmap door_close1 {
             get {
-                object obj = ResourceManager.GetObject("luz_off", resourceCulture);
+                object obj = ResourceManager.GetObject("door_close1", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -73,9 +73,9 @@ namespace Application_A.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap luz_on {
+        internal static System.Drawing.Bitmap door_open1 {
             get {
-                object obj = ResourceManager.GetObject("luz_on", resourceCulture);
+                object obj = ResourceManager.GetObject("door_open1", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

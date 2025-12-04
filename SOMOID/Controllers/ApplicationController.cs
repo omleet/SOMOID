@@ -1,12 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Data.SqlClient;
-using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Web.Http;
 using Api.Routing;
+using SOMOID.Helpers;
 using SOMOID.Models;
 
 namespace SOMOID.Controllers
@@ -17,7 +13,9 @@ namespace SOMOID.Controllers
     /// </summary>
     public class ApplicationController : ApiController
     {
-        string connection = Properties.Settings.Default.ConnectionStr;
+        private readonly SQLHelper sqlHelper = new SQLHelper();
+        private const string ApplicationResType = "application";
+        private const string DeletedApplicationResType = "application-deleted";
 
         #region GET Operations
         /// <summary>
@@ -32,40 +30,9 @@ namespace SOMOID.Controllers
         [GetRoute("api/somiod/{appName}")]
         public IHttpActionResult GetApplicationByName(string appName)
         {
-            // this is working
-            Application app = null;
-            var conn = new SqlConnection(connection);
-            string getQuery =
-                @"
-                SELECT [resource-name],
-                       [creation-datetime],
-                       [res-type]
-                FROM [application]
-                WHERE [resource-name] = @appName";
-            var cmd = new SqlCommand(getQuery, conn);
-            cmd.Parameters.AddWithValue("@appName", appName);
             try
             {
-                using (conn)
-                {
-                    conn.Open();
-                    var reader = cmd.ExecuteReader();
-                    using (cmd)
-                    {
-                        using (reader)
-                        {
-                            if (reader.Read())
-                            {
-                                app = new Application
-                                {
-                                    ResourceName = (string)reader["resource-name"],
-                                    CreationDatetime = (DateTime)reader["creation-datetime"],
-                                    ResType = (string)reader["res-type"],
-                                };
-                            }
-                        }
-                    }
-                }
+                var app = sqlHelper.GetApplication(appName);
                 if (app == null)
                     return NotFound();
                 return Ok(app);
@@ -104,68 +71,44 @@ namespace SOMOID.Controllers
         [PostRoute("api/somiod")]
         public IHttpActionResult CreateApplication([FromBody] Application value)
         {
-            // working
-            // Validação: body não pode estar vazio
             if (value == null)
                 return BadRequest("O corpo da requisição não pode estar vazio.");
-            // Auto-gerar nome se não fornecido
             if (string.IsNullOrWhiteSpace(value.ResourceName))
                 value.ResourceName =
                     "app-"
                     + DateTime.UtcNow.ToString("yyyyMMddHHmmss")
                     + "-"
                     + Guid.NewGuid().ToString().Substring(0, 8);
-            // Configurar propriedades automáticas
-            value.ResType = "application";
+            value.ResType = ApplicationResType;
             value.CreationDatetime = DateTime.UtcNow;
-            // SQL Queries
-            string sqlCheckDuplicate =
-                @"
-                SELECT COUNT(*)
-                FROM [application]
-                WHERE [resource-name] = @appName";
-            string sqlInsert =
-                @"
-                INSERT INTO [application]
-                ([resource-name], [creation-datetime], [res-type])
-                VALUES (@resourceName, @creationDatetime, @resType)";
-            SqlConnection conn = new SqlConnection(connection);
             try
             {
-                using (conn)
+                var existingResType = sqlHelper.GetApplicationResTypeValue(value.ResourceName);
+                if (!string.IsNullOrEmpty(existingResType))
                 {
-                    conn.Open();
-                    // 1) Verificar se já existe application com este nome
-                    var cmdCheckDuplicate = new SqlCommand(sqlCheckDuplicate, conn);
-                    cmdCheckDuplicate.Parameters.AddWithValue("@appName", value.ResourceName);
-                    int appCount = (int)cmdCheckDuplicate.ExecuteScalar();
-                    if (appCount > 0)
-                        return Conflict();
-                    // 2) Inserir a nova application
-                    var cmd = new SqlCommand(sqlInsert, conn);
-                    cmd.Parameters.AddWithValue("@resourceName", value.ResourceName);
-                    cmd.Parameters.AddWithValue("@creationDatetime", value.CreationDatetime);
-                    cmd.Parameters.AddWithValue("@resType", value.ResType);
-                    int rowsAffected = cmd.ExecuteNonQuery();
-                    if (rowsAffected > 0)
-                    {
-                        // Formatar o timestamp para ISO 8601
-                        var responseValue = new
-                        {
-                            resourceName = value.ResourceName,
-                            creationDatetime = value.CreationDatetime.ToString(
-                                "yyyy-MM-ddTHH:mm:ss"
-                            ),
-                            resType = value.ResType,
-                        };
-                        string locationUrl = $"/api/somiod/{value.ResourceName}";
-                        return Created(locationUrl, responseValue);
-                    }
-                    else
-                    {
-                        return InternalServerError(new Exception("Falha ao criar application."));
-                    }
+                    if (existingResType.Equals(ApplicationResType, StringComparison.OrdinalIgnoreCase))
+                        return Content(HttpStatusCode.Conflict, "Error the name for the application already exists try another");
+                    if (existingResType.Equals(DeletedApplicationResType, StringComparison.OrdinalIgnoreCase))
+                        return Content(HttpStatusCode.Conflict, "Application with that name can't be created try another");
+                    return Content(HttpStatusCode.Conflict, "Error the name for the application already exists try another");
                 }
+
+                var created = sqlHelper.InsertApplication(value);
+                if (created)
+                {
+                    var responseValue = new
+                    {
+                        resourceName = value.ResourceName,
+                        creationDatetime = value.CreationDatetime.ToString(
+                            "yyyy-MM-ddTHH:mm:ss"
+                        ),
+                        resType = value.ResType,
+                    };
+                    string locationUrl = $"/api/somiod/{value.ResourceName}";
+                    return Created(locationUrl, responseValue);
+                }
+
+                return InternalServerError(new Exception("Falha ao criar application."));
             }
             catch (Exception ex)
             {
@@ -197,99 +140,40 @@ namespace SOMOID.Controllers
         /// Vai renomear "lighting" para "lighting-v2"
         /// </remarks>
         [HttpPut]
-        [PutRoute("api/somiod{appName:regex(^[^/]+$):applicationexists}")]
+        [PutRoute("api/somiod/{appName:regex(^[^/]+$)}")]
         public IHttpActionResult UpdateApplication(string appName, [FromBody] Application value)
         {
-            // Validação: body não pode estar vazio
             if (value == null)
                 return BadRequest("O corpo da requisição não pode estar vazio.");
-            // Validação: novo resource-name é obrigatório
             if (string.IsNullOrWhiteSpace(value.ResourceName))
                 return BadRequest(
                     "O campo 'resourceName' é obrigatório para atualizar uma application."
                 );
-            // Não permitir update se os nomes são iguais
             if (value.ResourceName.Equals(appName, StringComparison.OrdinalIgnoreCase))
                 return BadRequest("O novo resource-name deve ser diferente do atual.");
-            var conn = new SqlConnection(connection);
-            // SQL Queries
-            string sqlCheckExists =
-                @"
-                SELECT COUNT(*)
-                FROM [application]
-                WHERE [resource-name] = @appName";
-            string sqlCheckNewNameExists =
-                @"
-                SELECT COUNT(*)
-                FROM [application]
-                WHERE [resource-name] = @newAppName";
-            string sqlUpdate =
-                @"
-                UPDATE [application]
-                SET [resource-name] = @newResourceName
-                WHERE [resource-name] = @oldResourceName";
             try
             {
-                using (conn)
+                var existingApp = sqlHelper.GetApplication(appName);
+                if (existingApp == null)
+                    return Content(HttpStatusCode.NotFound, "The application does not exist try another");
+
+                var targetResType = sqlHelper.GetApplicationResTypeValue(value.ResourceName);
+                if (!string.IsNullOrEmpty(targetResType) && targetResType.Equals(ApplicationResType, StringComparison.OrdinalIgnoreCase))
+                    return Conflict();
+
+                var updatedApp = sqlHelper.RenameApplication(appName, value.ResourceName);
+                if (updatedApp == null)
+                    return InternalServerError(new Exception("Falha ao atualizar application."));
+
+                var responseValue = new
                 {
-                    conn.Open();
-                    // 1) Verificar se application atual existe
-                    var cmdCheckExists = new SqlCommand(sqlCheckExists, conn);
-                    cmdCheckExists.Parameters.AddWithValue("@appName", appName);
-                    int existsCount = (int)cmdCheckExists.ExecuteScalar();
-                    if (existsCount == 0)
-                        return NotFound();
-                    // 2) Verificar se novo nome já existe
-                    var cmdCheckNewName = new SqlCommand(sqlCheckNewNameExists, conn);
-                    cmdCheckNewName.Parameters.AddWithValue("@newAppName", value.ResourceName);
-                    int newNameCount = (int)cmdCheckNewName.ExecuteScalar();
-                    if (newNameCount > 0)
-                        return Conflict();
-                    // 3) Atualizar a application
-                    var cmd = new SqlCommand(sqlUpdate, conn);
-                    cmd.Parameters.AddWithValue("@oldResourceName", appName);
-                    cmd.Parameters.AddWithValue("@newResourceName", value.ResourceName);
-                    int rowsAffected = cmd.ExecuteNonQuery();
-                    if (rowsAffected > 0)
-                    {
-                        // Buscar dados atualizados
-                        string sqlGetUpdated =
-                            @"
-                            SELECT [resource-name],
-                                   [creation-datetime],
-                                   [res-type]
-                            FROM [application]
-                            WHERE [resource-name] = @appName";
-                        var cmdGet = new SqlCommand(sqlGetUpdated, conn);
-                        cmdGet.Parameters.AddWithValue("@appName", value.ResourceName);
-                        var readerUpdated = cmdGet.ExecuteReader();
-                        Application updatedApp = null;
-                        if (readerUpdated.Read())
-                        {
-                            updatedApp = new Application
-                            {
-                                ResourceName = (string)readerUpdated["resource-name"],
-                                CreationDatetime = (DateTime)readerUpdated["creation-datetime"],
-                                ResType = (string)readerUpdated["res-type"],
-                            };
-                        }
-                        var responseValue = new
-                        {
-                            resourceName = updatedApp.ResourceName,
-                            creationDatetime = updatedApp.CreationDatetime.ToString(
-                                "yyyy-MM-ddTHH:mm:ss"
-                            ),
-                            resType = updatedApp.ResType,
-                        };
-                        return Ok(responseValue);
-                    }
-                    else
-                    {
-                        return InternalServerError(
-                            new Exception("Falha ao atualizar application.")
-                        );
-                    }
-                }
+                    resourceName = updatedApp.ResourceName,
+                    creationDatetime = updatedApp.CreationDatetime.ToString(
+                        "yyyy-MM-ddTHH:mm:ss"
+                    ),
+                    resType = updatedApp.ResType,
+                };
+                return Ok(responseValue);
             }
             catch (Exception ex)
             {
@@ -308,85 +192,15 @@ namespace SOMOID.Controllers
         /// <response code="404">Application não encontrada</response>
         /// <response code="500">Erro interno do servidor</response>
         [HttpDelete]
-        [DeleteRoute("api/somiod/{appName:regex(^[^/]+$):applicationexists}")]
+        [DeleteRoute("api/somiod/{appName:regex(^[^/]+$)}")]
         public IHttpActionResult DeleteApplication(string appName)
         {
-            var conn = new SqlConnection(connection);
-            // Queries para validar e deletar em cascata
-            string sqlCheckExists =
-                @"
-                SELECT COUNT(*)
-                FROM [application]
-                WHERE [resource-name] = @appName";
-            string sqlDelete =
-                @"
-                DELETE ci
-                FROM [content-instance] ci
-                JOIN [container] c ON c.[resource-name] = ci.[container-resource-name]
-                WHERE c.[application-resource-name] = @appName;
-                DELETE s
-                FROM [subscription] s
-                JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
-                WHERE c.[application-resource-name] = @appName;
-                DELETE [container]
-                WHERE [application-resource-name] = @appName;
-                DELETE [application]
-                WHERE [resource-name] = @appName;";
             try
             {
-                using (conn)
-                {
-                    conn.Open();
-                    // 1) Verificar se existe
-                    var cmdCheck = new SqlCommand(sqlCheckExists, conn);
-                    cmdCheck.Parameters.AddWithValue("@appName", appName);
-                    int existsCount = (int)cmdCheck.ExecuteScalar();
-                    if (existsCount == 0)
-                        return NotFound();
-                    // 2) Deletar em cascata
-                    // Nota: Em SQL Server, não é possível executar múltiplos comandos em um único cmd.ExecuteNonQuery()
-                    // Portanto, é necessário executar cada DELETE individualmente
-                    // 2.1) Deletar content-instances
-                    string sqlDeleteContentInstances =
-                        @"
-                        DELETE ci
-                        FROM [content-instance] ci
-                        JOIN [container] c ON c.[resource-name] = ci.[container-resource-name]
-                        WHERE c.[application-resource-name] = @appName";
-                    var cmdDeleteCI = new SqlCommand(sqlDeleteContentInstances, conn);
-                    cmdDeleteCI.Parameters.AddWithValue("@appName", appName);
-                    cmdDeleteCI.ExecuteNonQuery();
-                    // 2.2) Deletar subscriptions
-                    string sqlDeleteSubscriptions =
-                        @"
-                        DELETE s
-                        FROM [subscription] s
-                        JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
-                        WHERE c.[application-resource-name] = @appName";
-                    var cmdDeleteSub = new SqlCommand(sqlDeleteSubscriptions, conn);
-                    cmdDeleteSub.Parameters.AddWithValue("@appName", appName);
-                    cmdDeleteSub.ExecuteNonQuery();
-                    // 2.3) Deletar containers
-                    string sqlDeleteContainers =
-                        @"
-                        DELETE [container]
-                        WHERE [application-resource-name] = @appName";
-                    var cmdDeleteCont = new SqlCommand(sqlDeleteContainers, conn);
-                    cmdDeleteCont.Parameters.AddWithValue("@appName", appName);
-                    cmdDeleteCont.ExecuteNonQuery();
-                    // 2.4) Deletar application
-                    string sqlDeleteApp =
-                        @"
-                        DELETE [application]
-                        WHERE [resource-name] = @appName";
-                    var cmdDeleteApp = new SqlCommand(sqlDeleteApp, conn);
-                    cmdDeleteApp.Parameters.AddWithValue("@appName", appName);
-                    int rowsAffected = cmdDeleteApp.ExecuteNonQuery();
-                    if (rowsAffected > 0)
-                        return Ok();
-                    else
-                        return NotFound();
-                }
+                var deleted = sqlHelper.SoftDeleteApplication(appName);
+                if (!deleted)
+                    return Content(HttpStatusCode.NotFound, "The application does not exist try another");
+                return Ok("Application deleted with sucess");
             }
             catch (Exception ex)
             {
