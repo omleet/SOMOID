@@ -68,7 +68,200 @@ namespace SOMOID.Helpers
             return containerPaths;
         }
 
+        public List<string> GetAllContainers(string appName)
+        {
+            var containerPaths = new List<string>();
+            using (var conn = new SqlConnection(connection))
+            using (
+                var cmd = new SqlCommand(
+                    @"
+                        SELECT c.[resource-name]
+                        FROM [container] c
+                        JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+                        WHERE a.[resource-name] = @appName
+                          AND a.[res-type] = @active
+                        ORDER BY c.[creation-datetime]",
+                    conn
+                )
+            )
+            {
+                cmd.Parameters.AddWithValue("@appName", appName);
+                cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
+                conn.Open();
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        string contName = (string)reader["resource-name"];
+                        containerPaths.Add($"/api/somiod/{appName}/{contName}");
+                    }
+                }
+            }
+            return containerPaths;
+        }
+
+        public List<string> GetAllContentInstances(string appName)
+        {
+            var paths = new List<string>();
+            using (var conn = new SqlConnection(connection))
+            using (
+                var cmd = new SqlCommand(
+                    @"
+                        SELECT a.[resource-name] AS appName,
+                               c.[resource-name] AS contName,
+                               ci.[resource-name] AS ciName
+                        FROM [content-instance] ci
+                        JOIN [container] c ON c.[resource-name] = ci.[container-resource-name]
+                        JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+                        WHERE a.[resource-name] = @appName
+                          AND a.[res-type] = @active
+                        ORDER BY a.[resource-name], c.[resource-name], ci.[creation-datetime]",
+                    conn
+                )
+            )
+            {
+                cmd.Parameters.AddWithValue("@appName", appName);
+                cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
+                conn.Open();
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        string aName = (string)reader["appName"];
+                        string cName = (string)reader["contName"];
+                        string ciName = (string)reader["ciName"];
+                        paths.Add($"/api/somiod/{aName}/{cName}/{ciName}");
+                    }
+                }
+            }
+            return paths;
+        }
+
+        public List<string> GetAllSubscriptions(string appName, string containerName)
+        {
+            var subscriptionPaths = new List<string>();
+            using (var conn = new SqlConnection(connection))
+            using (
+                var cmd = new SqlCommand(
+                    @"
+                    SELECT s.[resource-name]
+                    FROM [subscription] s
+                    JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
+                    JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+                    WHERE a.[resource-name] = @appName
+                    AND c.[resource-name] = @containerName
+                    AND a.[res-type] = @active
+                    ORDER BY s.[creation-datetime]",
+                    conn
+                )
+            )
+            {
+                cmd.Parameters.AddWithValue("@appName", appName);
+                cmd.Parameters.AddWithValue("@containerName", containerName);
+                cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
+                conn.Open();
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        string subName = (string)reader["resource-name"];
+                        subscriptionPaths.Add($"/api/somiod/{appName}/{containerName}/subs/{subName}");
+                    }
+                }
+            }
+            return subscriptionPaths;
+        }
+
+        public Subscription GetSubscriptionByAppName(string appName, string containerName, string subName)
+        {
+            using (var conn = new SqlConnection(connection))
+            using (
+                var cmd = new SqlCommand(
+                    @"
+            SELECT s.[resource-name],
+                   s.[creation-datetime],
+                   s.[container-resource-name],
+                   s.[res-type],
+                   s.[evt],
+                   s.[endpoint]
+            FROM [subscription] s
+            JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
+            JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+            WHERE a.[resource-name] = @appName
+              AND c.[resource-name] = @containerName
+              AND s.[resource-name] = @subName
+              AND a.[res-type] = @active",
+                    conn
+                )
+            )
+            {
+                cmd.Parameters.AddWithValue("@appName", appName);
+                cmd.Parameters.AddWithValue("@containerName", containerName);
+                cmd.Parameters.AddWithValue("@subName", subName);
+                cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
+                conn.Open();
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        return new Subscription
+                        {
+                            ResourceName = (string)reader["resource-name"],
+                            CreationDatetime = (DateTime)reader["creation-datetime"],
+                            ContainerResourceName = (string)reader["container-resource-name"],
+                            ResType = (string)reader["res-type"],
+                            Evt = (int)reader["evt"],
+                            Endpoint = (string)reader["endpoint"]
+                        };
+                    }
+                }
+            }
+            return null;
+        }
+
+        public int CheckIfSubscriptionParentExists(string appName, string containerName)
+        {
+            int containerCount = 0;
+            string sqlCheckParent =
+               @"
+                SELECT COUNT(*)
+                FROM [container] c 
+                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+                WHERE a.[resource-name] = @applicationName 
+                AND c.[resource-name] = @containerName
+                AND a.[res-type] = @active";
+            using (var conn = new SqlConnection(connection))
+            {
+                conn.Open();
+                var cmdCheckParent = new SqlCommand(sqlCheckParent, conn);
+                cmdCheckParent.Parameters.AddWithValue("@applicationName", appName);
+                cmdCheckParent.Parameters.AddWithValue("@containerName", containerName);
+                cmdCheckParent.Parameters.AddWithValue("@active", ActiveApplicationResType);
+                containerCount = (int)cmdCheckParent.ExecuteScalar();
+            }
+            return containerCount;
+        }
         
+        public int CheckIfSubscriptionAlreadyExists(string subName, string containerName)
+        {
+            int subCount = 0;
+            string sqlCheckDuplicate =
+                @"
+                SELECT COUNT(*)
+                FROM [subscription]
+                WHERE [resource-name] = @subName
+                AND [container-resource-name] = @containerName";
+            using (var conn = new SqlConnection(connection))
+            {
+                conn.Open();
+                var cmdCheckDuplicate = new SqlCommand(sqlCheckDuplicate, conn);
+                cmdCheckDuplicate.Parameters.AddWithValue("@subName", subName);
+                cmdCheckDuplicate.Parameters.AddWithValue("@containerName", containerName);
+                subCount = (int)cmdCheckDuplicate.ExecuteScalar();
+            }
+            return subCount;
+        }
+
         public int InsertNewSubscription(string resourceName, DateTime creationTimeDate, string containerName, string resType, int evt, string endpoint)
         {
             int rowsAffected = 0;
