@@ -1,9 +1,12 @@
 ﻿using System;
+using System.Linq;
 using System.Net;
+using System.Runtime.InteropServices;
 using System.Web.Http;
 using Api.Routing;
 using SOMOID.Helpers;
 using SOMOID.Models;
+using SOMOID.Validators;
 
 namespace SOMOID.Controllers
 {
@@ -71,14 +74,14 @@ namespace SOMOID.Controllers
         [PostRoute("api/somiod")]
         public IHttpActionResult CreateApplication([FromBody] Application value)
         {
-            if (value == null)
-                return BadRequest("O corpo da requisição não pode estar vazio.");
-            if (string.IsNullOrWhiteSpace(value.ResourceName))
-                value.ResourceName =
-                    "app-"
-                    + DateTime.UtcNow.ToString("yyyyMMddHHmmss")
-                    + "-"
-                    + Guid.NewGuid().ToString().Substring(0, 8);
+            var validator = new CreateApplicationValidator();
+            var errors = validator.Validate(value);
+
+            if (errors.Any())
+            {
+                return Content(HttpStatusCode.BadRequest, new { errors });
+            }
+
             value.ResType = ApplicationResType;
             value.CreationDatetime = DateTime.UtcNow;
             try
@@ -86,11 +89,30 @@ namespace SOMOID.Controllers
                 var existingResType = sqlHelper.GetApplicationResTypeValue(value.ResourceName);
                 if (!string.IsNullOrEmpty(existingResType))
                 {
-                    if (existingResType.Equals(ApplicationResType, StringComparison.OrdinalIgnoreCase))
-                        return Content(HttpStatusCode.Conflict, "Error the name for the application already exists try another");
-                    if (existingResType.Equals(DeletedApplicationResType, StringComparison.OrdinalIgnoreCase))
-                        return Content(HttpStatusCode.Conflict, "Application with that name can't be created try another");
-                    return Content(HttpStatusCode.Conflict, "Error the name for the application already exists try another");
+                    if (
+                        existingResType.Equals(
+                            ApplicationResType,
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    )
+                        return Content(
+                            HttpStatusCode.Conflict,
+                            "Error the name for the application already exists try another"
+                        );
+                    if (
+                        existingResType.Equals(
+                            DeletedApplicationResType,
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    )
+                        return Content(
+                            HttpStatusCode.Conflict,
+                            "Application with that name can't be created try another"
+                        );
+                    return Content(
+                        HttpStatusCode.Conflict,
+                        "Error the name for the application already exists try another"
+                    );
                 }
 
                 var created = sqlHelper.InsertApplication(value);
@@ -99,9 +121,7 @@ namespace SOMOID.Controllers
                     var responseValue = new
                     {
                         resourceName = value.ResourceName,
-                        creationDatetime = value.CreationDatetime.ToString(
-                            "yyyy-MM-ddTHH:mm:ss"
-                        ),
+                        creationDatetime = value.CreationDatetime.ToString("yyyy-MM-ddTHH:mm:ss"),
                         resType = value.ResType,
                     };
                     string locationUrl = $"/api/somiod/{value.ResourceName}";
@@ -143,22 +163,31 @@ namespace SOMOID.Controllers
         [PutRoute("api/somiod/{appName:regex(^[^/]+$)}")]
         public IHttpActionResult UpdateApplication(string appName, [FromBody] Application value)
         {
-            if (value == null)
-                return BadRequest("O corpo da requisição não pode estar vazio.");
-            if (string.IsNullOrWhiteSpace(value.ResourceName))
-                return BadRequest(
-                    "O campo 'resourceName' é obrigatório para atualizar uma application."
-                );
+            var validator = new UpdateApplicationValidator();
+            var errors = validator.Validate(value);
+
+            if (errors.Any())
+            {
+                return Content(HttpStatusCode.BadRequest, new { errors });
+            }
+
+            // we aint gonna move this check to the validator, as the validator only checks the body params and not business logic
             if (value.ResourceName.Equals(appName, StringComparison.OrdinalIgnoreCase))
                 return BadRequest("O novo resource-name deve ser diferente do atual.");
             try
             {
                 var existingApp = sqlHelper.GetApplication(appName);
                 if (existingApp == null)
-                    return Content(HttpStatusCode.NotFound, "The application does not exist try another");
+                    return Content(
+                        HttpStatusCode.NotFound,
+                        "The application does not exist try another"
+                    );
 
                 var targetResType = sqlHelper.GetApplicationResTypeValue(value.ResourceName);
-                if (!string.IsNullOrEmpty(targetResType) && targetResType.Equals(ApplicationResType, StringComparison.OrdinalIgnoreCase))
+                if (
+                    !string.IsNullOrEmpty(targetResType)
+                    && targetResType.Equals(ApplicationResType, StringComparison.OrdinalIgnoreCase)
+                )
                     return Conflict();
 
                 var updatedApp = sqlHelper.RenameApplication(appName, value.ResourceName);
@@ -168,9 +197,7 @@ namespace SOMOID.Controllers
                 var responseValue = new
                 {
                     resourceName = updatedApp.ResourceName,
-                    creationDatetime = updatedApp.CreationDatetime.ToString(
-                        "yyyy-MM-ddTHH:mm:ss"
-                    ),
+                    creationDatetime = updatedApp.CreationDatetime.ToString("yyyy-MM-ddTHH:mm:ss"),
                     resType = updatedApp.ResType,
                 };
                 return Ok(responseValue);
@@ -199,7 +226,10 @@ namespace SOMOID.Controllers
             {
                 var deleted = sqlHelper.SoftDeleteApplication(appName);
                 if (!deleted)
-                    return Content(HttpStatusCode.NotFound, "The application does not exist try another");
+                    return Content(
+                        HttpStatusCode.NotFound,
+                        "The application does not exist try another"
+                    );
                 return Ok("Application deleted with sucess");
             }
             catch (Exception ex)

@@ -165,14 +165,20 @@ namespace SOMOID.Helpers
                     while (reader.Read())
                     {
                         string subName = (string)reader["resource-name"];
-                        subscriptionPaths.Add($"/api/somiod/{appName}/{containerName}/subs/{subName}");
+                        subscriptionPaths.Add(
+                            $"/api/somiod/{appName}/{containerName}/subs/{subName}"
+                        );
                     }
                 }
             }
             return subscriptionPaths;
         }
 
-        public Subscription GetSubscriptionByAppName(string appName, string containerName, string subName)
+        public Subscription GetSubscriptionByAppName(
+            string appName,
+            string containerName,
+            string subName
+        )
         {
             using (var conn = new SqlConnection(connection))
             using (
@@ -211,7 +217,7 @@ namespace SOMOID.Helpers
                             ContainerResourceName = (string)reader["container-resource-name"],
                             ResType = (string)reader["res-type"],
                             Evt = (int)reader["evt"],
-                            Endpoint = (string)reader["endpoint"]
+                            Endpoint = (string)reader["endpoint"],
                         };
                     }
                 }
@@ -223,7 +229,7 @@ namespace SOMOID.Helpers
         {
             int containerCount = 0;
             string sqlCheckParent =
-               @"
+                @"
                 SELECT COUNT(*)
                 FROM [container] c 
                 JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
@@ -241,7 +247,7 @@ namespace SOMOID.Helpers
             }
             return containerCount;
         }
-        
+
         public int CheckIfSubscriptionAlreadyExists(string subName, string containerName)
         {
             int subCount = 0;
@@ -262,11 +268,18 @@ namespace SOMOID.Helpers
             return subCount;
         }
 
-        public int InsertNewSubscription(string resourceName, DateTime creationTimeDate, string containerName, string resType, int evt, string endpoint)
+        public int InsertNewSubscription(
+            string resourceName,
+            DateTime creationTimeDate,
+            string containerName,
+            string resType,
+            int evt,
+            string endpoint
+        )
         {
             int rowsAffected = 0;
             string sqlInsert =
-               @"
+                @"
                 INSERT INTO [subscription]
                 ([resource-name], [creation-datetime], [container-resource-name], [res-type], [evt], [endpoint])
                 VALUES (@resourceName, @creationDatetime, @containerResourceName, @resType, @evt, @endpoint)";
@@ -312,7 +325,7 @@ namespace SOMOID.Helpers
                         {
                             ResourceName = (string)reader["resource-name"],
                             CreationDatetime = (DateTime)reader["creation-datetime"],
-                            ResType = (string)reader["res-type"]
+                            ResType = (string)reader["res-type"],
                         };
                     }
                 }
@@ -408,7 +421,7 @@ namespace SOMOID.Helpers
                             {
                                 ResourceName = (string)reader["resource-name"],
                                 CreationDatetime = (DateTime)reader["creation-datetime"],
-                                ResType = (string)reader["res-type"]
+                                ResType = (string)reader["res-type"],
                             };
                         }
                     }
@@ -492,7 +505,7 @@ namespace SOMOID.Helpers
                             ResourceName = (string)reader["resource-name"],
                             CreationDatetime = (DateTime)reader["creation-datetime"],
                             ResType = (string)reader["res-type"],
-                            ApplicationResourceName = (string)reader["application-resource-name"]
+                            ApplicationResourceName = (string)reader["application-resource-name"],
                         };
                     }
                 }
@@ -613,7 +626,8 @@ namespace SOMOID.Helpers
                                 ResourceName = (string)reader["resource-name"],
                                 CreationDatetime = (DateTime)reader["creation-datetime"],
                                 ResType = (string)reader["res-type"],
-                                ApplicationResourceName = (string)reader["application-resource-name"]
+                                ApplicationResourceName = (string)
+                                    reader["application-resource-name"],
                             };
                         }
                     }
@@ -627,8 +641,9 @@ namespace SOMOID.Helpers
             using (var conn = new SqlConnection(connection))
             {
                 conn.Open();
-                using (var cmdDelCI = new SqlCommand(
-                    @"
+                using (
+                    var cmdDelCI = new SqlCommand(
+                        @"
                         DELETE ci
                         FROM [content-instance] ci
                         JOIN [container] c ON c.[resource-name] = ci.[container-resource-name]
@@ -636,7 +651,9 @@ namespace SOMOID.Helpers
                         WHERE a.[resource-name] = @appName
                           AND c.[resource-name] = @containerName
                           AND a.[res-type] = @active",
-                    conn))
+                        conn
+                    )
+                )
                 {
                     cmdDelCI.Parameters.AddWithValue("@appName", appName);
                     cmdDelCI.Parameters.AddWithValue("@containerName", containerName);
@@ -644,8 +661,9 @@ namespace SOMOID.Helpers
                     cmdDelCI.ExecuteNonQuery();
                 }
 
-                using (var cmdDelSub = new SqlCommand(
-                    @"
+                using (
+                    var cmdDelSub = new SqlCommand(
+                        @"
                         DELETE s
                         FROM [subscription] s
                         JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
@@ -653,7 +671,9 @@ namespace SOMOID.Helpers
                         WHERE a.[resource-name] = @appName
                           AND c.[resource-name] = @containerName
                           AND a.[res-type] = @active",
-                    conn))
+                        conn
+                    )
+                )
                 {
                     cmdDelSub.Parameters.AddWithValue("@appName", appName);
                     cmdDelSub.Parameters.AddWithValue("@containerName", containerName);
@@ -661,15 +681,18 @@ namespace SOMOID.Helpers
                     cmdDelSub.ExecuteNonQuery();
                 }
 
-                using (var cmdDelContainer = new SqlCommand(
-                    @"
+                using (
+                    var cmdDelContainer = new SqlCommand(
+                        @"
                         DELETE c
                         FROM [container] c
                         JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
                         WHERE a.[resource-name] = @appName
                           AND c.[resource-name] = @containerName
                           AND a.[res-type] = @active",
-                    conn))
+                        conn
+                    )
+                )
                 {
                     cmdDelContainer.Parameters.AddWithValue("@appName", appName);
                     cmdDelContainer.Parameters.AddWithValue("@containerName", containerName);
@@ -724,7 +747,11 @@ namespace SOMOID.Helpers
             }
         }
 
-        public ContentInstance GetContentInstance(string appName, string containerName, string ciName)
+        public ContentInstance GetContentInstance(
+            string appName,
+            string containerName,
+            string ciName
+        )
         {
             using (var conn = new SqlConnection(connection))
             using (
@@ -763,7 +790,7 @@ namespace SOMOID.Helpers
                             ContainerResourceName = (string)reader["container-resource-name"],
                             ResType = (string)reader["res-type"],
                             ContentType = (string)reader["content-type"],
-                            Content = (string)reader["content"]
+                            Content = (string)reader["content"],
                         };
                     }
                 }
