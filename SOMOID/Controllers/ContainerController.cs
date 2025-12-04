@@ -72,7 +72,7 @@ namespace SOMOID.Controllers
         [PostRoute("api/somiod/{appName:regex(^[^/]+$)}")]
         public IHttpActionResult CreateContainer(string appName, [FromBody] Container value)
         {
-            var validator = new CreateControllerValidator();
+            var validator = new CreateContainerValidator();
             var errors = validator.Validate(value);
 
             if (errors.Any())

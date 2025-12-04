@@ -6,7 +6,7 @@ using System.Web;
 
 namespace SOMOID.Validators
 {
-    public class CreateControllerValidator : IValidator<Container>
+    public class CreateContainerValidator : IValidator<Container>
     {
         public List<ValidationError> Validate(Container value)
         {
