@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Linq;
 using System.Net;
 using System.Web.Http;
 using Api.Routing;
 using SOMOID.Helpers;
 using SOMOID.Models;
+using SOMOID.Validators;
 
 namespace SOMOID.Controllers
 {
@@ -70,15 +72,13 @@ namespace SOMOID.Controllers
         [PostRoute("api/somiod/{appName:regex(^[^/]+$)}")]
         public IHttpActionResult CreateContainer(string appName, [FromBody] Container value)
         {
-            if (value == null)
-                return BadRequest("O corpo da requisição não pode estar vazio.");
+            var validator = new CreateControllerValidator();
+            var errors = validator.Validate(value);
 
-            if (string.IsNullOrWhiteSpace(value.ResourceName))
-                value.ResourceName =
-                    "cont-"
-                    + DateTime.UtcNow.ToString("yyyyMMddHHmmss")
-                    + "-"
-                    + Guid.NewGuid().ToString().Substring(0, 8);
+            if (errors.Any())
+            {
+                return Content(HttpStatusCode.BadRequest, new { errors });
+            }
 
             value.ResType = "container";
             value.ApplicationResourceName = appName;
