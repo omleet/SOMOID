@@ -2,28 +2,43 @@
 
 namespace Api.Routing
 {
-    // Search in https://stackoverflow.com/questions/23094584/...
     public class GetRouteAttribute : MethodConstraintedRouteAttribute
     {
-        public GetRouteAttribute(string template)
-            : base(template ?? "", HttpMethod.Get) { }
+        public GetRouteAttribute(
+            string template,
+            string discoveryResType = null,
+            bool noDiscovery = false
+        )
+            : base(template ?? "", HttpMethod.Get, discoveryResType, noDiscovery) { }
     }
 
     public class PostRouteAttribute : MethodConstraintedRouteAttribute
     {
-        public PostRouteAttribute(string template)
-            : base(template ?? "", HttpMethod.Post) { }
+        public PostRouteAttribute(
+            string template,
+            string discoveryResType = null,
+            bool noDiscovery = false
+        )
+            : base(template ?? "", HttpMethod.Post, discoveryResType, noDiscovery) { }
     }
 
     public class PutRouteAttribute : MethodConstraintedRouteAttribute
     {
-        public PutRouteAttribute(string template)
-            : base(template ?? "", HttpMethod.Put) { }
+        public PutRouteAttribute(
+            string template,
+            string discoveryResType = null,
+            bool noDiscovery = false
+        )
+            : base(template ?? "", HttpMethod.Put, discoveryResType, noDiscovery) { }
     }
 
     public class DeleteRouteAttribute : MethodConstraintedRouteAttribute
     {
-        public DeleteRouteAttribute(string template)
-            : base(template ?? "", HttpMethod.Delete) { }
+        public DeleteRouteAttribute(
+            string template,
+            string discoveryResType = null,
+            bool noDiscovery = false
+        )
+            : base(template ?? "", HttpMethod.Delete, discoveryResType, noDiscovery) { }
     }
 }

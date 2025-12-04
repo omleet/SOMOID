@@ -34,11 +34,11 @@
             // 
             // pictureBox1
             // 
-            this.pictureBox1.Image = global::Application_A.Properties.Resources.luz_off;
-            this.pictureBox1.Location = new System.Drawing.Point(60, 52);
+            this.pictureBox1.Image = global::Application_A.Properties.Resources.door_open1;
+            this.pictureBox1.Location = new System.Drawing.Point(76, 26);
             this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(175, 207);
-            this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.AutoSize;
+            this.pictureBox1.Size = new System.Drawing.Size(279, 387);
+            this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
             this.pictureBox1.TabIndex = 0;
             this.pictureBox1.TabStop = false;
             // 
@@ -46,14 +46,13 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(295, 328);
+            this.ClientSize = new System.Drawing.Size(423, 446);
             this.Controls.Add(this.pictureBox1);
             this.Name = "Form1";
             this.Text = "Application A";
             this.Load += new System.EventHandler(this.Form1_Load);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.ResumeLayout(false);
-            this.PerformLayout();
 
         }
 

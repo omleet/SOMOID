@@ -135,23 +135,33 @@
     <Compile Include="Controllers\ApplicationController.cs" />
     <Compile Include="Controllers\ContainerController.cs" />
     <Compile Include="Controllers\ContentInstanceController.cs" />
+    <Compile Include="Controllers\DiscoveryController.cs" />
     <Compile Include="Controllers\SubscriptionController.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
+    <Compile Include="Helpers\SQLHelper.cs" />
     <Compile Include="Models\Application.cs" />
     <Compile Include="Models\Container.cs" />
     <Compile Include="Models\ContentInstance.cs" />
     <Compile Include="Models\Subscription.cs" />
+    <Compile Include="Models\ValidationError.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Properties\Settings.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
+    <Compile Include="Routing\ApplicationExistsConstraint.cs" />
+    <Compile Include="Routing\ContainerExistsConstraint.cs" />
+    <Compile Include="Routing\Constraints.cs" />
     <Compile Include="Routing\GetRouteAttribute.cs" />
     <Compile Include="Routing\MethodConstraint.cs" />
     <Compile Include="Routing\MethodConstraintedRouteAttribute.cs" />
+    <Compile Include="Validators\CreateApplicationValidator.cs" />
+    <Compile Include="Validators\IValidator.cs" />
+    <Compile Include="Validators\SubscriptionValidator.cs" />
+    <Compile Include="Validators\UpdateApplicationValidator.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="App_Data\SOMOID.mdf" />
@@ -183,6 +193,7 @@
     <Content Include="Scripts\bootstrap.esm.min.js" />
     <Content Include="Scripts\bootstrap.js" />
     <Content Include="Scripts\bootstrap.min.js" />
+    <Content Include="E2E\Tests.ps1" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -208,6 +219,8 @@
     <Content Include="Views\Shared\_Layout.cshtml" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="Scripts\NewFolder1\" />
+    <Folder Include="Views\ApplicationExists\" />
     <Folder Include="Views\Application\" />
     <Folder Include="Views\Container\" />
     <Folder Include="Views\ContentInstance\" />
