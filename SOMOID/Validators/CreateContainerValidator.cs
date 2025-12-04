@@ -6,6 +6,10 @@ using System.Web;
 
 namespace SOMOID.Validators
 {
+    /// <summary>
+    /// Validator for <see cref="Container"/> when creating a new instance.
+    /// Generates a resource name if missing. Inspired by <see href="https://express-validator.github.io/docs/">express-validator</see>.
+    /// </summary>
     public class CreateContainerValidator : IValidator<Container>
     {
         public List<ValidationError> Validate(Container value)

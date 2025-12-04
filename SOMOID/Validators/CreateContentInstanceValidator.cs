@@ -7,6 +7,11 @@ using System.Web.UI;
 
 namespace SOMOID.Validators
 {
+    /// <summary>
+    /// Validator for <see cref="ContentInstance"/> when creating a new instance.
+    /// Ensures required fields are present and generates a resource name if missing.
+    /// Inspired by <see href="https://express-validator.github.io/docs/">express-validator</see>.
+    /// </summary>
     public class CreateContentInstanceValidator : IValidator<ContentInstance>
     {
         public List<ValidationError> Validate(ContentInstance value)
@@ -32,7 +37,7 @@ namespace SOMOID.Validators
                 });
                 return errors;
             }
-                
+
             if (string.IsNullOrWhiteSpace(value.Content))
             {
                 errors.Add(new ValidationError
@@ -43,8 +48,6 @@ namespace SOMOID.Validators
                 return errors;
             }
 
-            // lets move this after all the checks pass, no need to generate a resourcename if theres a probability that it wont be used 
-            
             if (string.IsNullOrWhiteSpace(value.ResourceName))
                 value.ResourceName = GenerateResourceName();
 

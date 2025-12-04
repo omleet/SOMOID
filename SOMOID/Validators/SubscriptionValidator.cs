@@ -3,10 +3,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
-using SOMOID.Models;
 
 namespace SOMOID.Validators
 {
+    /// <summary>
+    /// Validator for <see cref="Subscription"/> objects.
+    /// Ensures required fields are present, validates the endpoint format, and auto-generates <c>ResourceName</c> if missing.
+    /// Inspired by <see href="https://express-validator.github.io/docs/">express-validator</see>.
+    /// </summary>
     public class SubscriptionValidator : IValidator<Subscription>
     {
         public List<ValidationError> Validate(Subscription value)
@@ -44,12 +48,11 @@ namespace SOMOID.Validators
             return errors;
         }
 
-
         /// <summary>
-        /// Valida se uma string é um endpoint válido (HTTP ou MQTT).
+        /// Checks if a string is a valid endpoint (HTTP, HTTPS, or MQTT).
         /// </summary>
-        /// <param name="endpoint">String a validar</param>
-        /// <returns>true se é um endpoint válido, false caso contrário</returns>
+        /// <param name="endpoint">The string to validate.</param>
+        /// <returns>True if the endpoint is valid; otherwise, false.</returns>
         private bool IsValidEndpoint(string endpoint)
         {
             if (string.IsNullOrWhiteSpace(endpoint))
@@ -57,14 +60,12 @@ namespace SOMOID.Validators
 
             try
             {
-                // Verificar se começa com http://, https:// ou mqtt://
                 if (
                     endpoint.StartsWith("http://")
                     || endpoint.StartsWith("https://")
                     || endpoint.StartsWith("mqtt://")
                 )
                 {
-                    // Tentar fazer parse como URI
                     var uri = new Uri(endpoint);
                     return true;
                 }
@@ -76,5 +77,4 @@ namespace SOMOID.Validators
             }
         }
     }
-
 }

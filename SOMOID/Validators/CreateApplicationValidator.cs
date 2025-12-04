@@ -7,6 +7,10 @@ using SOMOID.Validators;
 
 namespace SOMOID.Validators
 {
+    /// <summary>
+    /// Validator for <see cref="Application"/> when creating a new instance.
+    /// Generates a resource name if missing. Inspired by <see href="https://express-validator.github.io/docs/">express-validator</see>.
+    /// </summary>
     public class CreateApplicationValidator : IValidator<Application>
     {
         public List<ValidationError> Validate(Application value)
@@ -25,16 +29,12 @@ namespace SOMOID.Validators
                 return errors;
             }
 
-            // to avoid having this on the controller logic, this will do the same, but in the validator
-
             if (string.IsNullOrWhiteSpace(value.ResourceName))
                 value.ResourceName = GenerateResourceName();
 
-
             return errors;
         }
-    
-    
+
         private string GenerateResourceName()
         {
             var timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");

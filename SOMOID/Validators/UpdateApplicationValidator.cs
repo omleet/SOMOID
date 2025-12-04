@@ -7,12 +7,16 @@ using System.Web;
 
 namespace SOMOID.Validators
 {
+    /// <summary>
+    /// Validator for updating <see cref="Application"/> objects.
+    /// Ensures required fields are present for updates.
+    /// Inspired by <see href="https://express-validator.github.io/docs/">express-validator</see>.
+    /// </summary>
     public class UpdateApplicationValidator : IValidator<Application>
     {
         public List<ValidationError> Validate(Application value)
         {
             var errors = new List<ValidationError>();
-
 
             if (value == null)
             {
