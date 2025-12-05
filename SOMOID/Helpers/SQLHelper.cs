@@ -100,27 +100,25 @@ namespace SOMOID.Helpers
             return containerPaths;
         }
 
-        public List<string> GetAllContentInstances(string appName)
+        public List<string> GetAllContentInstances()
         {
             var paths = new List<string>();
             using (var conn = new SqlConnection(connection))
             using (
                 var cmd = new SqlCommand(
                     @"
-                        SELECT a.[resource-name] AS appName,
-                               c.[resource-name] AS contName,
-                               ci.[resource-name] AS ciName
-                        FROM [content-instance] ci
-                        JOIN [container] c ON c.[resource-name] = ci.[container-resource-name]
-                        JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                        WHERE a.[resource-name] = @appName
-                          AND a.[res-type] = @active
-                        ORDER BY a.[resource-name], c.[resource-name], ci.[creation-datetime]",
+                SELECT a.[resource-name] AS appName,
+                       c.[resource-name] AS contName,
+                       ci.[resource-name] AS ciName
+                FROM [content-instance] ci
+                JOIN [container] c ON c.[resource-name] = ci.[container-resource-name]
+                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+                WHERE a.[res-type] = @active
+                ORDER BY a.[resource-name], c.[resource-name], ci.[creation-datetime]",
                     conn
                 )
             )
             {
-                cmd.Parameters.AddWithValue("@appName", appName);
                 cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
                 conn.Open();
                 using (var reader = cmd.ExecuteReader())
@@ -876,6 +874,43 @@ namespace SOMOID.Helpers
                 conn.Open();
                 return cmd.ExecuteNonQuery() > 0;
             }
+        }
+
+        public List<string> GetAllContentInstancesFromApp(string appName)
+        {
+            var paths = new List<string>();
+            using (var conn = new SqlConnection(connection))
+            using (
+                var cmd = new SqlCommand(
+                    @"
+                SELECT a.[resource-name] AS appName,
+                       c.[resource-name] AS contName,
+                       ci.[resource-name] AS ciName
+                FROM [content-instance] ci
+                JOIN [container] c ON c.[resource-name] = ci.[container-resource-name]
+                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+                WHERE a.[resource-name] = @appName
+                  AND a.[res-type] = @active
+                ORDER BY a.[resource-name], c.[resource-name], ci.[creation-datetime]",
+                    conn
+                )
+            )
+            {
+                cmd.Parameters.AddWithValue("@appName", appName);
+                cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
+                conn.Open();
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        string aName = (string)reader["appName"];
+                        string cName = (string)reader["contName"];
+                        string ciName = (string)reader["ciName"];
+                        paths.Add($"/api/somiod/{aName}/{cName}/{ciName}");
+                    }
+                }
+            }
+            return paths;
         }
     }
 }

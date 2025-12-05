@@ -4,14 +4,14 @@ using System.Net;
 using System.Web.Http;
 using Api.Routing;
 using SOMOID.Helpers;
-
+using Swashbuckle.Swagger.Annotations;
 
 namespace SOMOID.Controllers
 {
     public class DiscoveryController : ApiController
     {
         private SQLHelper SQLHelperInstance = new SQLHelper();
-       
+
         #region Discovery Actions
 
         [HttpGet]
@@ -24,7 +24,8 @@ namespace SOMOID.Controllers
                 if (applications == null || applications.Count == 0)
                     return Content(HttpStatusCode.NotFound, "Error there's no applications yet created");
                 return Ok(applications);
-            }catch (Exception ex)
+            }
+            catch (Exception ex)
             {
                 return InternalServerError(ex);
             }
@@ -49,7 +50,7 @@ namespace SOMOID.Controllers
 
         [HttpGet]
         [GetRoute(
-            "{appName:regex(^[^/]+$):applicationexists}",
+            "api/somiod/{appName:regex(^[^/]+$):applicationexists}",
             discoveryResType: "container",
             false
         )]
@@ -57,8 +58,12 @@ namespace SOMOID.Controllers
         {
             try
             {
-                return Ok(SQLHelperInstance.GetAllContainers(appName));
-            } catch (Exception ex)
+                var containers = SQLHelperInstance.GetAllContainers(appName);
+                if (containers == null || containers.Count == 0)
+                    return Content(HttpStatusCode.NotFound, "No containers found for the application");
+                return Ok(containers);
+            }
+            catch (Exception ex)
             {
                 return InternalServerError(ex);
             }
@@ -66,7 +71,30 @@ namespace SOMOID.Controllers
 
         [HttpGet]
         [GetRoute(
-            "{appName:regex(^[^/]+$):applicationexists}",
+            "api/somiod",
+            discoveryResType: "content-instance",
+            false
+        )]
+        public IHttpActionResult DiscoverAllContentInstances()
+        {
+            try
+            {
+                var contentInstances = SQLHelperInstance.GetAllContentInstances();
+                if (contentInstances == null || contentInstances.Count == 0)
+                {
+                    return Content(HttpStatusCode.NotFound, "No Content Instances created yet");
+                }
+                return Ok(contentInstances);
+            }
+            catch (Exception ex)
+            {
+                return InternalServerError(ex);
+            }
+        }
+
+        [HttpGet]
+        [GetRoute(
+            "api/somiod/{appName:regex(^[^/]+$):applicationexists}",
             discoveryResType: "content-instance",
             false
         )]
@@ -74,8 +102,14 @@ namespace SOMOID.Controllers
         {
             try
             {
-                return Ok(SQLHelperInstance.GetAllContentInstances(appName));
-            }catch (Exception ex)
+                var contentInstances = SQLHelperInstance.GetAllContentInstancesFromApp(appName);
+                if (contentInstances == null || contentInstances.Count == 0)
+                {
+                    return Content(HttpStatusCode.NotFound, $"No Content Instances found for app: '{appName}'");
+                }
+                return Ok(contentInstances);
+            }
+            catch (Exception ex)
             {
                 return InternalServerError(ex);
             }
@@ -83,16 +117,22 @@ namespace SOMOID.Controllers
 
         [HttpGet]
         [GetRoute(
-            "{appName:regex(^[^/]+$):applicationexists}/{containerName:regex(^[^/]+$):containerexists}",
+            "api/somiod/{appName:regex(^[^/]+$):applicationexists}/{containerName:regex(^[^/]+$):containerexists}",
             discoveryResType: "subscription",
             false
         )]
+        [SwaggerResponse(HttpStatusCode.OK, "List of subscriptions for the container", typeof(List<string>))]
+        [SwaggerResponse(HttpStatusCode.NotFound, "No subscriptions found")]
         public IHttpActionResult DiscoverSubscriptions(string appName, string containerName)
         {
             try
             {
-                return Ok(SQLHelperInstance.GetAllSubscriptions(appName, containerName));
-            } catch(Exception ex)
+                var subscriptions = SQLHelperInstance.GetAllSubscriptions(appName, containerName);
+                if (subscriptions == null || subscriptions.Count == 0)
+                    return Content(HttpStatusCode.NotFound, "No subscriptions found");
+                return Ok(subscriptions);
+            }
+            catch (Exception ex)
             {
                 return InternalServerError(ex);
             }

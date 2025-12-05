@@ -158,10 +158,14 @@
     <Compile Include="Routing\GetRouteAttribute.cs" />
     <Compile Include="Routing\MethodConstraint.cs" />
     <Compile Include="Routing\MethodConstraintedRouteAttribute.cs" />
+    <Compile Include="Swagger\DiscoveryHeaderOperationFilter.cs" />
     <Compile Include="Validators\CreateApplicationValidator.cs" />
+    <Compile Include="Validators\CreateContainerValidator.cs" />
+    <Compile Include="Validators\CreateContentInstanceValidator.cs" />
     <Compile Include="Validators\IValidator.cs" />
     <Compile Include="Validators\SubscriptionValidator.cs" />
     <Compile Include="Validators\UpdateApplicationValidator.cs" />
+    <Compile Include="Validators\UpdateContainerValidator.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="App_Data\SOMOID.mdf" />

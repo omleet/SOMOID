@@ -7,6 +7,7 @@ using Api.Routing;
 using SOMOID.Helpers;
 using SOMOID.Models;
 using SOMOID.Validators;
+using System.Diagnostics;
 
 namespace SOMOID.Controllers
 {
@@ -30,9 +31,10 @@ namespace SOMOID.Controllers
         /// <response code="404">Application não encontrada</response>
         /// <response code="500">Erro interno do servidor</response>
         [HttpGet]
-        [GetRoute("api/somiod/{appName}")]
+        [GetRoute("api/somiod/{appName}", null, true)]
         public IHttpActionResult GetApplicationByName(string appName)
         {
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] -> {DateTime.UtcNow} Entering Get Application by Name");
             try
             {
                 var app = sqlHelper.GetApplication(appName);

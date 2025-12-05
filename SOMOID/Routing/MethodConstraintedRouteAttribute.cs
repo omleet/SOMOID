@@ -4,7 +4,6 @@ using System.Web.Http.Routing;
 
 namespace Api.Routing
 {
-    // Search in https://stackoverflow.com/questions/23094584/...
     public class MethodConstraintedRouteAttribute : RouteFactoryAttribute
     {
         public MethodConstraintedRouteAttribute(

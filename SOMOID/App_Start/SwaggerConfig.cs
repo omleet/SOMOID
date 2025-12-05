@@ -2,6 +2,7 @@ using System.Web.Http;
 using WebActivatorEx;
 using SOMOID;
 using Swashbuckle.Application;
+using SOMOID.Swagger;
 
 [assembly: PreApplicationStartMethod(typeof(SwaggerConfig), "Register")]
 
@@ -33,6 +34,7 @@ namespace SOMOID
                         // additional fields by chaining methods off SingleApiVersion.
                         //
                         c.SingleApiVersion("v1", "SOMOID");
+                        c.OperationFilter<DiscoveryHeaderOperationFilter>();
 
                         // If you want the output Swagger docs to be indented properly, enable the "PrettyPrint" option.
                         //
