@@ -1,9 +1,16 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Validation.Validators;
 using Api.Routing;
+using Newtonsoft.Json;
 using SOMOID.Helpers;
 using SOMOID.Models;
 using SOMOID.Validators;
@@ -17,7 +24,14 @@ namespace SOMOID.Controllers
     // [RoutePrefix("api/somiod")]
     public class ContentInstanceController : ApiController
     {
+        private static readonly HttpClient HttpClient = new HttpClient();
         private readonly SQLHelper sqlHelper = new SQLHelper();
+
+        private enum SubscriptionEventType
+        {
+            Creation = 1,
+            Deletion = 2,
+        }
 
         #region GET Operations
 
@@ -81,7 +95,7 @@ namespace SOMOID.Controllers
         [PostRoute(
             "api/somiod/{appName:regex(^[^/]+$):applicationexists}/{containerName:regex(^[^/]+$):containerexists}"
         )]
-        public IHttpActionResult CreateContentInstance(
+        public async Task<IHttpActionResult> CreateContentInstance(
             string appName,
             string containerName,
             [FromBody] ContentInstance value
@@ -96,6 +110,7 @@ namespace SOMOID.Controllers
 
             value.ResType = "content-instance";
             value.ContainerResourceName = containerName;
+            value.ApplicationResourceName = appName;
             value.CreationDatetime = DateTime.UtcNow;
 
             try
@@ -103,7 +118,7 @@ namespace SOMOID.Controllers
                 if (!sqlHelper.ContentInstanceParentExists(appName, containerName))
                     return NotFound();
 
-                if (sqlHelper.ContentInstanceExistsInContainer(containerName, value.ResourceName))
+                if (sqlHelper.ContentInstanceExistsInContainer(appName, containerName, value.ResourceName))
                     return Conflict();
 
                 var created = sqlHelper.InsertContentInstance(value);
@@ -123,6 +138,12 @@ namespace SOMOID.Controllers
 
                     string locationUrl =
                         $"/api/somiod/{appName}/{containerName}/{value.ResourceName}";
+                    await NotifySubscriptionsAsync(
+                        appName,
+                        containerName,
+                        value,
+                        SubscriptionEventType.Creation
+                    );
                     return Created(locationUrl, responseValue);
                 }
 
@@ -147,7 +168,7 @@ namespace SOMOID.Controllers
         /// <returns>200 OK ou 404 NotFound</returns>
         [HttpDelete]
         [DeleteRoute("api/somiod/{appName}/{containerName}/{ciName}")]
-        public IHttpActionResult DeleteContentInstance(
+        public async Task<IHttpActionResult> DeleteContentInstance(
             string appName,
             string containerName,
             string ciName
@@ -161,7 +182,15 @@ namespace SOMOID.Controllers
 
                 var deleted = sqlHelper.DeleteContentInstance(appName, containerName, ciName);
                 if (deleted)
+                {
+                    await NotifySubscriptionsAsync(
+                        appName,
+                        containerName,
+                        existing,
+                        SubscriptionEventType.Deletion
+                    );
                     return Ok();
+                }
                 return NotFound();
             }
             catch (Exception ex)
@@ -171,5 +200,93 @@ namespace SOMOID.Controllers
         }
 
         #endregion
+
+        private async Task NotifySubscriptionsAsync(
+            string appName,
+            string containerName,
+            ContentInstance contentInstance,
+            SubscriptionEventType eventType
+        )
+        {
+            if (contentInstance == null)
+                return;
+
+            var subscriptions = sqlHelper.GetSubscriptionsForContainer(appName, containerName);
+            if (subscriptions == null || subscriptions.Count == 0)
+                return;
+
+            int eventCode = (int)eventType;
+
+            var httpSubscriptions = subscriptions
+                .Where(sub => sub.Evt == 3 || sub.Evt == eventCode)
+                .Where(sub => !string.IsNullOrWhiteSpace(sub.Endpoint))
+                .Where(sub =>
+                    sub.Endpoint.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                    || sub.Endpoint.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+                )
+                .ToList();
+
+            if (httpSubscriptions.Count == 0)
+                return;
+
+            var tasks = new List<Task>();
+
+            foreach (var subscription in httpSubscriptions)
+            {
+                var payload = new
+                {
+                    eventType = eventType == SubscriptionEventType.Creation ? "creation" : "deletion",
+                    eventCode,
+                    subscription = new
+                    {
+                        resourceName = subscription.ResourceName,
+                        evt = subscription.Evt,
+                        endpoint = subscription.Endpoint,
+                    },
+                    resource = new
+                    {
+                        resourceName = contentInstance.ResourceName,
+                        creationDatetime = contentInstance.CreationDatetime.ToString("yyyy-MM-ddTHH:mm:ss"),
+                        resType = contentInstance.ResType,
+                        containerResourceName = contentInstance.ContainerResourceName,
+                        applicationResourceName = appName,
+                        contentType = contentInstance.ContentType,
+                        content = contentInstance.Content,
+                        path = $"/api/somiod/{appName}/{containerName}/{contentInstance.ResourceName}",
+                    },
+                    triggeredAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss"),
+                };
+
+                tasks.Add(SendHttpNotificationAsync(subscription.Endpoint, payload));
+            }
+
+            if (tasks.Count > 0)
+            {
+                await Task.WhenAll(tasks);
+            }
+        }
+
+        private async Task SendHttpNotificationAsync(string endpoint, object payload)
+        {
+            try
+            {
+                var body = JsonConvert.SerializeObject(payload);
+                using (var content = new StringContent(body, Encoding.UTF8, "application/json"))
+                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5)))
+                {
+                    var response = await HttpClient.PostAsync(endpoint, content, cts.Token);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        Debug.WriteLine(
+                            $"Notification to {endpoint} failed with status {(int)response.StatusCode}"
+                        );
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Notification to {endpoint} failed: {ex.Message}");
+            }
+        }
     }
 }

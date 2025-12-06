@@ -11,6 +11,7 @@ namespace SOMOID.Models
         public string ResourceName { get; set; }
         public DateTime CreationDatetime { get; set; }
         public string ContainerResourceName { get; set; }
+        public string ApplicationResourceName { get; set; }
         [JsonProperty("res-type")]
 
         public string ResType { get; set; }

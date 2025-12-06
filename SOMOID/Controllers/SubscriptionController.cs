@@ -102,6 +102,7 @@ namespace SOMOID.Controllers
             // Configurar propriedades automáticas
             value.ResType = "subscription";
             value.ContainerResourceName = containerName;
+            value.ApplicationResourceName = appName;
             value.CreationDatetime = DateTime.UtcNow;
    
             try
@@ -110,11 +111,19 @@ namespace SOMOID.Controllers
                 if (containerCount == 0)
                     return NotFound();
 
-                int subCount = SQLHelperInstance.CheckIfSubscriptionAlreadyExists(value.ResourceName, containerName);
+                int subCount = SQLHelperInstance.CheckIfSubscriptionAlreadyExists(appName, containerName, value.ResourceName);
                 if (subCount > 0)
                     return Conflict();
 
-                int rowsAffected = SQLHelperInstance.InsertNewSubscription(value.ResourceName, value.CreationDatetime, containerName, value.ResType, value.Evt, value.Endpoint);
+                int rowsAffected = SQLHelperInstance.InsertNewSubscription(
+                    value.ResourceName,
+                    value.CreationDatetime,
+                    containerName,
+                    value.ApplicationResourceName,
+                    value.ResType,
+                    value.Evt,
+                    value.Endpoint
+                );
                 if (rowsAffected == 0)
                 {
                     return InternalServerError(new Exception("Falha ao criar subscription."));
