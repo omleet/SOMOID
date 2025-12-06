@@ -12,10 +12,12 @@ namespace Api.Routing
     public class DiscoveryConstraint : IHttpRouteConstraint
     {
         private readonly string _resType;
+        private readonly string _normalizedResType;
 
         public DiscoveryConstraint(string resType)
         {
             _resType = resType ?? throw new ArgumentNullException(nameof(resType));
+            _normalizedResType = NormalizeResType(_resType);
         }
 
         public bool Match(
@@ -32,10 +34,34 @@ namespace Api.Routing
             if (request.Headers.TryGetValues("somiod-discovery", out IEnumerable<string> headers))
             {
                 return headers.Any(h =>
-                    string.Equals(h, _resType, StringComparison.OrdinalIgnoreCase)
-                );
+                {
+                    if (string.IsNullOrWhiteSpace(h))
+                        return false;
+
+                    if (
+                        string.Equals(h, _resType, StringComparison.OrdinalIgnoreCase)
+                    )
+                        return true;
+
+                    var normalizedHeader = NormalizeResType(h);
+                    return normalizedHeader.Length > 0
+                        && string.Equals(
+                            normalizedHeader,
+                            _normalizedResType,
+                            StringComparison.Ordinal
+                        );
+                });
             }
             return false;
+        }
+
+        private static string NormalizeResType(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return string.Empty;
+
+            var letters = value.Where(char.IsLetterOrDigit);
+            return new string(letters.ToArray()).ToLowerInvariant();
         }
     }
 

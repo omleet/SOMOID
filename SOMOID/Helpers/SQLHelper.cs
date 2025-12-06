@@ -135,6 +135,41 @@ namespace SOMOID.Helpers
             return paths;
         }
 
+        public List<string> GetAllSubscriptions()
+        {
+            var subscriptionPaths = new List<string>();
+            using (var conn = new SqlConnection(connection))
+            using (
+                var cmd = new SqlCommand(
+                    @"
+                SELECT a.[resource-name] AS appName,
+                       c.[resource-name] AS contName,
+                       s.[resource-name] AS subName
+                FROM [subscription] s
+                JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
+                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+                WHERE a.[res-type] = @active
+                ORDER BY a.[resource-name], c.[resource-name], s.[creation-datetime]",
+                    conn
+                )
+            )
+            {
+                cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
+                conn.Open();
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        string appName = (string)reader["appName"];
+                        string contName = (string)reader["contName"];
+                        string subName = (string)reader["subName"];
+                        subscriptionPaths.Add($"/api/somiod/{appName}/{contName}/subs/{subName}");
+                    }
+                }
+            }
+            return subscriptionPaths;
+        }
+
         public List<string> GetAllSubscriptions(string appName, string containerName)
         {
             var subscriptionPaths = new List<string>();

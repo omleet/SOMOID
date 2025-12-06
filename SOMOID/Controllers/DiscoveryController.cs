@@ -117,6 +117,29 @@ namespace SOMOID.Controllers
 
         [HttpGet]
         [GetRoute(
+            "api/somiod",
+            discoveryResType: "subscription",
+            false
+        )]
+        public IHttpActionResult DiscoverAllSubscriptions()
+        {
+            try
+            {
+                var subscriptions = SQLHelperInstance.GetAllSubscriptions();
+                if (subscriptions == null || subscriptions.Count == 0)
+                {
+                    return Content(HttpStatusCode.NotFound, "No subscriptions created yet");
+                }
+                return Ok(subscriptions);
+            }
+            catch (Exception ex)
+            {
+                return InternalServerError(ex);
+            }
+        }
+
+        [HttpGet]
+        [GetRoute(
             "api/somiod/{appName:regex(^[^/]+$):applicationexists}/{containerName:regex(^[^/]+$):containerexists}",
             discoveryResType: "subscription",
             false
