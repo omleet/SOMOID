@@ -217,47 +217,98 @@ namespace SOMOID.Controllers
 
             int eventCode = (int)eventType;
 
-            var httpSubscriptions = subscriptions
+            // Filter subscriptions that match the event type
+            var relevantSubscriptions = subscriptions
                 .Where(sub => sub.Evt == 3 || sub.Evt == eventCode)
                 .Where(sub => !string.IsNullOrWhiteSpace(sub.Endpoint))
+                .ToList();
+
+            if (relevantSubscriptions.Count == 0)
+                return;
+
+            // Separate HTTP and MQTT subscriptions
+            var httpSubscriptions = relevantSubscriptions
                 .Where(sub =>
                     sub.Endpoint.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
                     || sub.Endpoint.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
                 )
                 .ToList();
 
-            if (httpSubscriptions.Count == 0)
-                return;
+            var mqttSubscriptions = relevantSubscriptions
+                .Where(sub => sub.Endpoint.StartsWith("mqtt://", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            // Prepare payload
+            var payload = new
+            {
+                eventType = eventType == SubscriptionEventType.Creation ? "creation" : "deletion",
+                eventCode,
+                subscription = new
+                {
+                    resourceName = "",
+                    evt = 0,
+                    endpoint = "",
+                },
+                resource = new
+                {
+                    resourceName = contentInstance.ResourceName,
+                    creationDatetime = contentInstance.CreationDatetime.ToString("yyyy-MM-ddTHH:mm:ss"),
+                    resType = contentInstance.ResType,
+                    containerResourceName = contentInstance.ContainerResourceName,
+                    applicationResourceName = appName,
+                    contentType = contentInstance.ContentType,
+                    content = contentInstance.Content,
+                    path = $"/api/somiod/{appName}/{containerName}/{contentInstance.ResourceName}",
+                },
+                triggeredAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss"),
+            };
 
             var tasks = new List<Task>();
 
+            // Send HTTP notifications
             foreach (var subscription in httpSubscriptions)
             {
-                var payload = new
+                var httpPayload = new
                 {
-                    eventType = eventType == SubscriptionEventType.Creation ? "creation" : "deletion",
-                    eventCode,
+                    eventType = payload.eventType,
+                    eventCode = payload.eventCode,
                     subscription = new
                     {
                         resourceName = subscription.ResourceName,
                         evt = subscription.Evt,
                         endpoint = subscription.Endpoint,
                     },
-                    resource = new
-                    {
-                        resourceName = contentInstance.ResourceName,
-                        creationDatetime = contentInstance.CreationDatetime.ToString("yyyy-MM-ddTHH:mm:ss"),
-                        resType = contentInstance.ResType,
-                        containerResourceName = contentInstance.ContainerResourceName,
-                        applicationResourceName = appName,
-                        contentType = contentInstance.ContentType,
-                        content = contentInstance.Content,
-                        path = $"/api/somiod/{appName}/{containerName}/{contentInstance.ResourceName}",
-                    },
-                    triggeredAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss"),
+                    resource = payload.resource,
+                    triggeredAt = payload.triggeredAt,
                 };
 
-                tasks.Add(SendHttpNotificationAsync(subscription.Endpoint, payload));
+                tasks.Add(SendHttpNotificationAsync(subscription.Endpoint, httpPayload));
+            }
+
+            // Send MQTT notifications
+            foreach (var subscription in mqttSubscriptions)
+            {
+                var mqttPayload = new
+                {
+                    eventType = payload.eventType,
+                    eventCode = payload.eventCode,
+                    subscription = new
+                    {
+                        resourceName = subscription.ResourceName,
+                        evt = subscription.Evt,
+                        endpoint = subscription.Endpoint,
+                    },
+                    resource = payload.resource,
+                    triggeredAt = payload.triggeredAt,
+                };
+
+                // MQTT topic format: api/somiod/{appName}/{containerName}
+                var mqttTopic = $"api/somiod/{appName}/{containerName}";
+                tasks.Add(Task.Run(() => SendMqttNotification(
+                    subscription.Endpoint,
+                    mqttTopic,
+                    mqttPayload
+                )));
             }
 
             if (tasks.Count > 0)
@@ -278,14 +329,32 @@ namespace SOMOID.Controllers
                     if (!response.IsSuccessStatusCode)
                     {
                         Debug.WriteLine(
-                            $"Notification to {endpoint} failed with status {(int)response.StatusCode}"
+                            $"HTTP notification to {endpoint} failed with status {(int)response.StatusCode}"
                         );
                     }
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Notification to {endpoint} failed: {ex.Message}");
+                Debug.WriteLine($"HTTP notification to {endpoint} failed: {ex.Message}");
+            }
+        }
+
+        private void SendMqttNotification(string brokerEndpoint, string topic, object payload)
+        {
+            try
+            {
+                var jsonPayload = JsonConvert.SerializeObject(payload);
+                var success = MqttHelper.PublishNotification(brokerEndpoint, topic, jsonPayload);
+                
+                if (!success)
+                {
+                    Debug.WriteLine($"MQTT notification to {brokerEndpoint} on topic '{topic}' failed");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"MQTT notification to {brokerEndpoint} failed: {ex.Message}");
             }
         }
     }
