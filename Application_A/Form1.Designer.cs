@@ -34,7 +34,7 @@
             // 
             // pictureBox1
             // 
-            this.pictureBox1.Image = global::Application_A.Properties.Resources.door_open1;
+            this.pictureBox1.Image = global::Application_A.Properties.Resources.door_close;
             this.pictureBox1.Location = new System.Drawing.Point(76, 26);
             this.pictureBox1.Name = "pictureBox1";
             this.pictureBox1.Size = new System.Drawing.Size(279, 387);

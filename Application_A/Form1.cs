@@ -12,6 +12,9 @@ namespace Application_A
 {
     public partial class Form1 : Form
     {
+
+        string statusApp = "close";
+        string baseURL = @"http://localhost:0000";
         public Form1()
         {
             InitializeComponent();
@@ -20,6 +23,21 @@ namespace Application_A
         private void Form1_Load(object sender, EventArgs e)
         {
 
+        }
+
+        private void ChangeDoorByStatus(string status)
+        {
+            if (status == "Open")
+            {
+                pictureBox1.Image = Properties.Resources.door_open;
+                statusApp = "open";
+            }
+            else
+            {
+                pictureBox1.Image = Properties.Resources.door_close;
+                statusApp = "close";
+            }
+            
         }
     }
 }

@@ -57,12 +57,24 @@
 
 ## Special Requirements (15% of grade)
 
-- [ ] **Implement XML file serialization for notifications** ⚠️ HIGH PRIORITY
+- [x] **Implement XML file serialization for notifications** ✅ COMPLETED 
+******
+To test everything end-to-end, do:
+
+  1.Trigger both HTTP and MQTT subscriptions by creating or deleting contentInstances that point to the subscribed endpoints.
+    Confirm that the JSON notifications still arrive as expected.
+
+  2.After each notification, check the directory:
+    App_Data/Notifications/<application>/
+      You should see new XML files. Open one and verify that it contains the correct payload and passes validation.
+
+  Full workflow:
+    Create Application → Create Container → Create Subscriptions (sub1 for MQTT and sub2 for HTTP) → Create a ContentInstance with data → Verify both endpoints receive the notification and check the files in App_Data.
+******
   - Add mandatory feature: All incoming notifications for each application should be serialized into XML files and validated against a predefined XML schema
   - Create XSD schema and implement validation logic
   - Store XML files organized by application
   - Apply to both HTTP and MQTT notifications
-
 ---
 
 ## Documentation & Delivery (40% of grade)

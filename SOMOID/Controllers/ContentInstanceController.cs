@@ -25,6 +25,7 @@ namespace SOMOID.Controllers
     public class ContentInstanceController : ApiController
     {
         private static readonly HttpClient HttpClient = new HttpClient();
+        private const string NotificationDateFormat = "yyyy-MM-ddTHH:mm:ss";
         private readonly SQLHelper sqlHelper = new SQLHelper();
 
         private enum SubscriptionEventType
@@ -216,8 +217,9 @@ namespace SOMOID.Controllers
                 return;
 
             int eventCode = (int)eventType;
+            var eventTypeName = eventType == SubscriptionEventType.Creation ? "creation" : "deletion";
+            var triggeredAt = DateTime.UtcNow.ToString(NotificationDateFormat);
 
-            // Filter subscriptions that match the event type
             var relevantSubscriptions = subscriptions
                 .Where(sub => sub.Evt == 3 || sub.Evt == eventCode)
                 .Where(sub => !string.IsNullOrWhiteSpace(sub.Endpoint))
@@ -226,7 +228,6 @@ namespace SOMOID.Controllers
             if (relevantSubscriptions.Count == 0)
                 return;
 
-            // Separate HTTP and MQTT subscriptions
             var httpSubscriptions = relevantSubscriptions
                 .Where(sub =>
                     sub.Endpoint.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
@@ -238,76 +239,25 @@ namespace SOMOID.Controllers
                 .Where(sub => sub.Endpoint.StartsWith("mqtt://", StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
-            // Prepare payload
-            var payload = new
-            {
-                eventType = eventType == SubscriptionEventType.Creation ? "creation" : "deletion",
-                eventCode,
-                subscription = new
-                {
-                    resourceName = "",
-                    evt = 0,
-                    endpoint = "",
-                },
-                resource = new
-                {
-                    resourceName = contentInstance.ResourceName,
-                    creationDatetime = contentInstance.CreationDatetime.ToString("yyyy-MM-ddTHH:mm:ss"),
-                    resType = contentInstance.ResType,
-                    containerResourceName = contentInstance.ContainerResourceName,
-                    applicationResourceName = appName,
-                    contentType = contentInstance.ContentType,
-                    content = contentInstance.Content,
-                    path = $"/api/somiod/{appName}/{containerName}/{contentInstance.ResourceName}",
-                },
-                triggeredAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss"),
-            };
-
+            var resourceInfo = BuildResourceInfo(appName, containerName, contentInstance);
+            var mqttTopic = $"api/somiod/{appName}/{containerName}";
             var tasks = new List<Task>();
 
-            // Send HTTP notifications
             foreach (var subscription in httpSubscriptions)
             {
-                var httpPayload = new
-                {
-                    eventType = payload.eventType,
-                    eventCode = payload.eventCode,
-                    subscription = new
-                    {
-                        resourceName = subscription.ResourceName,
-                        evt = subscription.Evt,
-                        endpoint = subscription.Endpoint,
-                    },
-                    resource = payload.resource,
-                    triggeredAt = payload.triggeredAt,
-                };
-
-                tasks.Add(SendHttpNotificationAsync(subscription.Endpoint, httpPayload));
+                var payload = CreateNotificationPayload(subscription, eventTypeName, eventCode, resourceInfo, triggeredAt);
+                PersistNotificationPayload(payload, appName);
+                tasks.Add(SendHttpNotificationAsync(subscription.Endpoint, payload));
             }
 
-            // Send MQTT notifications
             foreach (var subscription in mqttSubscriptions)
             {
-                var mqttPayload = new
-                {
-                    eventType = payload.eventType,
-                    eventCode = payload.eventCode,
-                    subscription = new
-                    {
-                        resourceName = subscription.ResourceName,
-                        evt = subscription.Evt,
-                        endpoint = subscription.Endpoint,
-                    },
-                    resource = payload.resource,
-                    triggeredAt = payload.triggeredAt,
-                };
-
-                // MQTT topic format: api/somiod/{appName}/{containerName}
-                var mqttTopic = $"api/somiod/{appName}/{containerName}";
+                var payload = CreateNotificationPayload(subscription, eventTypeName, eventCode, resourceInfo, triggeredAt);
+                PersistNotificationPayload(payload, appName);
                 tasks.Add(Task.Run(() => SendMqttNotification(
                     subscription.Endpoint,
                     mqttTopic,
-                    mqttPayload
+                    payload
                 )));
             }
 
@@ -317,7 +267,61 @@ namespace SOMOID.Controllers
             }
         }
 
-        private async Task SendHttpNotificationAsync(string endpoint, object payload)
+        private static NotificationPayload CreateNotificationPayload(
+            Subscription subscription,
+            string eventTypeName,
+            int eventCode,
+            NotificationResourceInfo resourceInfo,
+            string triggeredAt
+        )
+        {
+            return new NotificationPayload
+            {
+                EventType = eventTypeName,
+                EventCode = eventCode,
+                Subscription = new NotificationSubscriptionInfo
+                {
+                    ResourceName = subscription.ResourceName,
+                    Evt = subscription.Evt,
+                    Endpoint = subscription.Endpoint,
+                },
+                Resource = resourceInfo,
+                TriggeredAt = triggeredAt,
+            };
+        }
+
+        private NotificationResourceInfo BuildResourceInfo(
+            string appName,
+            string containerName,
+            ContentInstance contentInstance
+        )
+        {
+            return new NotificationResourceInfo
+            {
+                ResourceName = contentInstance.ResourceName,
+                CreationDatetime = contentInstance.CreationDatetime.ToString(NotificationDateFormat),
+                ResType = contentInstance.ResType,
+                ContainerResourceName = contentInstance.ContainerResourceName,
+                ApplicationResourceName = appName,
+                ContentType = contentInstance.ContentType,
+                Content = contentInstance.Content,
+                Path = $"/api/somiod/{appName}/{containerName}/{contentInstance.ResourceName}",
+            };
+        }
+
+        private void PersistNotificationPayload(NotificationPayload payload, string appName)
+        {
+            try
+            {
+                NotificationXmlHelper.SerializeAndSave(payload, appName);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to persist notification XML for {appName}: {ex.Message}");
+            }
+        }
+
+        private async Task SendHttpNotificationAsync(string endpoint, NotificationPayload payload)
         {
             try
             {
@@ -340,13 +344,13 @@ namespace SOMOID.Controllers
             }
         }
 
-        private void SendMqttNotification(string brokerEndpoint, string topic, object payload)
+        private void SendMqttNotification(string brokerEndpoint, string topic, NotificationPayload payload)
         {
             try
             {
                 var jsonPayload = JsonConvert.SerializeObject(payload);
                 var success = MqttHelper.PublishNotification(brokerEndpoint, topic, jsonPayload);
-                
+
                 if (!success)
                 {
                     Debug.WriteLine($"MQTT notification to {brokerEndpoint} on topic '{topic}' failed");
