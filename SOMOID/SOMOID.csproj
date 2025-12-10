@@ -46,9 +46,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-	  <Reference Include="M2Mqtt.Net">
-		  <HintPath>..\packages\M2Mqtt.4.3.0.0\lib\net45\M2Mqtt.Net.dll</HintPath>
-	  </Reference>
+    <Reference Include="M2Mqtt.Net">
+      <HintPath>..\packages\M2Mqtt.4.3.0.0\lib\net45\M2Mqtt.Net.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="Swashbuckle.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=cd1bb07a5ac7c7bc, processorArchitecture=MSIL">
       <HintPath>..\packages\Swashbuckle.Core.5.6.0\lib\net40\Swashbuckle.Core.dll</HintPath>
@@ -138,6 +138,7 @@
     <Compile Include="Controllers\ApplicationController.cs" />
     <Compile Include="Controllers\ContainerController.cs" />
     <Compile Include="Controllers\ContentInstanceController.cs" />
+    <Compile Include="Controllers\ContentInstanceSubscriptionPostController.cs" />
     <Compile Include="Controllers\DiscoveryController.cs" />
     <Compile Include="Controllers\SubscriptionController.cs" />
     <Compile Include="Global.asax.cs">
@@ -150,6 +151,7 @@
     <Compile Include="Models\Container.cs" />
     <Compile Include="Models\ContentInstance.cs" />
     <Compile Include="Models\NotificationPayload.cs" />
+    <Compile Include="Models\OperationResult.cs" />
     <Compile Include="Models\Subscription.cs" />
     <Compile Include="Models\ValidationError.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -235,6 +237,7 @@
     <Folder Include="Views\ApplicationExists\" />
     <Folder Include="Views\Application\" />
     <Folder Include="Views\Container\" />
+    <Folder Include="Views\ContentInstanceSubscriptionPost\" />
     <Folder Include="Views\ContentInstance\" />
     <Folder Include="Views\Somoid\" />
     <Folder Include="Views\Subscripton\" />

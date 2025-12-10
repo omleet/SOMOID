@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
@@ -11,6 +12,7 @@ using System.Web.Http;
 using System.Web.Http.Validation.Validators;
 using Api.Routing;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using SOMOID.Helpers;
 using SOMOID.Models;
 using SOMOID.Validators;
@@ -22,11 +24,15 @@ namespace SOMOID.Controllers
     /// Uma content-instance representa um registo de dados criado num container.
     /// </summary>
     // [RoutePrefix("api/somiod")]
-    public class ContentInstanceController : ApiController
+    /// <summary>
+    /// Controlador para gerir Content-Instances no middleware SOMIOD.
+    /// Uma content-instance representa um registo de dados criado num container.
+    /// </summary>
+    public class ContentInstanceController : System.Web.Http.ApiController
     {
-        private static readonly HttpClient HttpClient = new HttpClient();
+        private static readonly System.Net.Http.HttpClient HttpClient = new System.Net.Http.HttpClient();
         private const string NotificationDateFormat = "yyyy-MM-ddTHH:mm:ss";
-        private readonly SQLHelper sqlHelper = new SQLHelper();
+        private readonly SOMOID.Helpers.SQLHelper sqlHelper = new SOMOID.Helpers.SQLHelper();
 
         private enum SubscriptionEventType
         {
@@ -36,19 +42,9 @@ namespace SOMOID.Controllers
 
         #region GET Operations
 
-        /// <summary>
-        /// Obtém uma content-instance específica num container.
-        /// </summary>
-        /// <param name="appName">Nome da application</param>
-        /// <param name="containerName">Nome do container</param>
-        /// <param name="ciName">Nome da content-instance</param>
-        /// <returns>Dados completos da content-instance</returns>
-        /// <response code="200">Encontrada</response>
-        /// <response code="404">Application, container ou content-instance não encontrados</response>
-        /// <response code="500">Erro interno</response>
         [HttpGet]
         [GetRoute("api/somiod/{appName}/{containerName}/{ciName}")]
-        public IHttpActionResult GetContentInstance(
+        public System.Web.Http.IHttpActionResult GetContentInstance(
             string appName,
             string containerName,
             string ciName
@@ -56,12 +52,12 @@ namespace SOMOID.Controllers
         {
             try
             {
-                var ci = sqlHelper.GetContentInstance(appName, containerName, ciName);
+                SOMOID.Models.ContentInstance ci = sqlHelper.GetContentInstance(appName, containerName, ciName);
                 if (ci == null)
                     return NotFound();
                 return Ok(ci);
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
                 return InternalServerError(ex);
             }
@@ -71,48 +67,99 @@ namespace SOMOID.Controllers
 
         #region POST Operations (Create)
 
-        /// <summary>
-        /// Cria uma nova content-instance num container.
-        /// </summary>
-        /// <param name="appName">Nome da application</param>
-        /// <param name="containerName">Nome do container</param>
-        /// <param name="value">Dados da content-instance (resourceName opcional)</param>
-        /// <returns>Content-instance criada com todas as propriedades</returns>
-        /// <response code="201">Criada com sucesso</response>
-        /// <response code="400">Dados inválidos</response>
-        /// <response code="404">Application ou container não encontrado</response>
-        /// <response code="409">Já existe content-instance com este nome neste container</response>
-        /// <response code="500">Erro interno</response>
-        /// <remarks>
-        /// POST /api/somiod/app1/cont1
-        /// Body:
-        /// {
-        ///   "resourceName": "ci1",         // opcional
-        ///   "contentType": "application/json",
-        ///   "content": "{\"temp\": 25}"
-        /// }
-        /// </remarks>
         [HttpPost]
-        [PostRoute(
-            "api/somiod/{appName:regex(^[^/]+$):applicationexists}/{containerName:regex(^[^/]+$):containerexists}"
-        )]
-        public async Task<IHttpActionResult> CreateContentInstance(
+        [PostRoute("api/somiod/{appName}/{containerName}")]
+        public System.Web.Http.IHttpActionResult CreateResource(
+    string appName,
+    string containerName,
+    [FromBody] Newtonsoft.Json.Linq.JObject body)
+        {
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] -> {DateTime.UtcNow} BODY: {body?.ToString()}");
+
+            if (body == null)
+                return BadRequest("Invalid or missing JSON body.");
+
+            string resType = body["res-type"]?.ToString()?.ToLower();
+            if (string.IsNullOrEmpty(resType))
+                return BadRequest("Missing 'res-type' field.");
+
+            switch (resType)
+            {
+                case "content-instance":
+                    // Convert JSON to ContentInstance
+                    SOMOID.Models.ContentInstance ci = body.ToObject<SOMOID.Models.ContentInstance>();
+
+                    var service = new ContentInstanceSubscriptionPostController();
+                    OperationResult result = service.CreateContentInstance(appName, containerName, ci);
+
+                    if (!result.Success)
+                    {
+                        if (result.Error == "Parent container not found") return NotFound();
+                        if (result.Error == "Content instance already exists") return Conflict();
+                        return InternalServerError(new Exception(result.Error));
+                    }
+
+                    string locationUrl = $"/api/somiod/{appName}/{containerName}/{ci.ResourceName}";
+                    var responseValue = new
+                    {
+                        resourceName = ci.ResourceName,
+                        creationDatetime = ci.CreationDatetime.ToString("yyyy-MM-ddTHH:mm:ss"),
+                        containerResourceName = ci.ContainerResourceName,
+                        resType = ci.ResType,
+                        contentType = ci.ContentType,
+                        content = ci.Content,
+                    };
+
+                    return Created(locationUrl, responseValue);
+
+                case "subscription":
+                    // Convert JSON to Subscription
+                    SOMOID.Models.Subscription sub = body.ToObject<SOMOID.Models.Subscription>();
+
+                    // If you want, you can refactor Subscription creation through ResourceService too
+                    var subService = new ContentInstanceSubscriptionPostController();
+                    OperationResult subResult = subService.CreateSubscription(appName, containerName, sub);
+
+                    if (subResult.ValidationErrors != null)
+                        return Content(System.Net.HttpStatusCode.BadRequest, new { errors = subResult.ValidationErrors });
+
+                    if (!subResult.Success)
+                    {
+                        if (subResult.Error == "Parent container not found") return NotFound();
+                        if (subResult.Error == "Subscription already exists") return Conflict();
+                        return InternalServerError(new Exception(subResult.Error));
+                    }
+
+                    string subLocationUrl = $"/api/somiod/{appName}/{containerName}/subs/{sub.ResourceName}";
+                    var subResponseValue = new
+                    {
+                        resourceName = sub.ResourceName,
+                        creationDatetime = sub.CreationDatetime.ToString("yyyy-MM-ddTHH:mm:ss"),
+                        containerResourceName = sub.ContainerResourceName,
+                        resType = sub.ResType,
+                        evt = sub.Evt,
+                        endpoint = sub.Endpoint,
+                    };
+
+                    return Created(subLocationUrl, subResponseValue);
+
+                default:
+                    return BadRequest("Invalid res-type. Expected 'content-instance' or 'subscription'.");
+            }
+        }
+
+
+        public System.Web.Http.IHttpActionResult CreateContentInstance(
             string appName,
             string containerName,
-            [FromBody] ContentInstance value
+            [System.Web.Http.FromBody] SOMOID.Models.ContentInstance value
         )
         {
-            var validator = new CreateContentInstanceValidator();
-            var errors = validator.Validate(value);
-            if (errors.Any())
-            {
-                return Content(HttpStatusCode.BadRequest, new { errors });
-            }
-
-            value.ResType = "content-instance";
             value.ContainerResourceName = containerName;
             value.ApplicationResourceName = appName;
-            value.CreationDatetime = DateTime.UtcNow;
+            value.CreationDatetime = System.DateTime.UtcNow;
+            System.Diagnostics.Debug.WriteLine($"[DEBUG value] -> {DateTime.UtcNow} BODY: {value?.ToString()}");
+
 
             try
             {
@@ -122,36 +169,29 @@ namespace SOMOID.Controllers
                 if (sqlHelper.ContentInstanceExistsInContainer(appName, containerName, value.ResourceName))
                     return Conflict();
 
-                var created = sqlHelper.InsertContentInstance(value);
-                if (created)
+                bool created = sqlHelper.InsertContentInstance(value);
+                if (!created)
+                    return InternalServerError(new System.Exception("Falha ao criar content-instance."));
+
+                // Send notifications asynchronously without blocking response
+                _ = NotifySubscriptionsAsync(appName, containerName, value, SubscriptionEventType.Creation);
+
+                var responseValue = new
                 {
-                    var responseValue = new
-                    {
-                        resourceName = value.ResourceName,
-                        creationDatetime = value.CreationDatetime.ToString(
-                            "yyyy-MM-ddTHH:mm:ss"
-                        ),
-                        containerResourceName = value.ContainerResourceName,
-                        resType = value.ResType,
-                        contentType = value.ContentType,
-                        content = value.Content,
-                    };
+                    resourceName = value.ResourceName,
+                    creationDatetime = value.CreationDatetime.ToString("yyyy-MM-ddTHH:mm:ss"),
+                    containerResourceName = value.ContainerResourceName,
+                    resType = value.ResType,
+                    contentType = value.ContentType,
+                    content = value.Content,
+                };
 
-                    string locationUrl =
-                        $"/api/somiod/{appName}/{containerName}/{value.ResourceName}";
-                    await NotifySubscriptionsAsync(
-                        appName,
-                        containerName,
-                        value,
-                        SubscriptionEventType.Creation
-                    );
-                    return Created(locationUrl, responseValue);
-                }
-
-                return InternalServerError(new Exception("Falha ao criar content-instance."));
+                string locationUrl = $"/api/somiod/{appName}/{containerName}/{value.ResourceName}";
+                return Created(locationUrl, responseValue);
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] -> {System.DateTime.UtcNow} SQL error when creating content-instance");
                 return InternalServerError(ex);
             }
         }
@@ -160,16 +200,9 @@ namespace SOMOID.Controllers
 
         #region DELETE Operations
 
-        /// <summary>
-        /// Elimina uma content-instance específica de um container.
-        /// </summary>
-        /// <param name="appName">Nome da application</param>
-        /// <param name="containerName">Nome do container</param>
-        /// <param name="ciName">Nome da content-instance</param>
-        /// <returns>200 OK ou 404 NotFound</returns>
-        [HttpDelete]
-        [DeleteRoute("api/somiod/{appName}/{containerName}/{ciName}")]
-        public async Task<IHttpActionResult> DeleteContentInstance(
+        [System.Web.Http.HttpDelete]
+        [Api.Routing.DeleteRoute("api/somiod/{appName}/{containerName}/{ciName}")]
+        public async System.Threading.Tasks.Task<System.Web.Http.IHttpActionResult> DeleteContentInstance(
             string appName,
             string containerName,
             string ciName
@@ -177,24 +210,18 @@ namespace SOMOID.Controllers
         {
             try
             {
-                var existing = sqlHelper.GetContentInstance(appName, containerName, ciName);
+                SOMOID.Models.ContentInstance existing = sqlHelper.GetContentInstance(appName, containerName, ciName);
                 if (existing == null)
                     return NotFound();
 
-                var deleted = sqlHelper.DeleteContentInstance(appName, containerName, ciName);
-                if (deleted)
-                {
-                    await NotifySubscriptionsAsync(
-                        appName,
-                        containerName,
-                        existing,
-                        SubscriptionEventType.Deletion
-                    );
-                    return Ok();
-                }
-                return NotFound();
+                bool deleted = sqlHelper.DeleteContentInstance(appName, containerName, ciName);
+                if (!deleted)
+                    return NotFound();
+
+                await NotifySubscriptionsAsync(appName, containerName, existing, SubscriptionEventType.Deletion);
+                return Ok();
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
                 return InternalServerError(ex);
             }
@@ -202,84 +229,78 @@ namespace SOMOID.Controllers
 
         #endregion
 
-        private async Task NotifySubscriptionsAsync(
+        private async System.Threading.Tasks.Task NotifySubscriptionsAsync(
             string appName,
             string containerName,
-            ContentInstance contentInstance,
+            SOMOID.Models.ContentInstance contentInstance,
             SubscriptionEventType eventType
         )
         {
             if (contentInstance == null)
                 return;
 
-            var subscriptions = sqlHelper.GetSubscriptionsForContainer(appName, containerName);
+            System.Collections.Generic.List<SOMOID.Models.Subscription> subscriptions =
+                sqlHelper.GetSubscriptionsForContainer(appName, containerName);
             if (subscriptions == null || subscriptions.Count == 0)
                 return;
 
             int eventCode = (int)eventType;
-            var eventTypeName = eventType == SubscriptionEventType.Creation ? "creation" : "deletion";
-            var triggeredAt = DateTime.UtcNow.ToString(NotificationDateFormat);
+            string eventTypeName = eventType == SubscriptionEventType.Creation ? "creation" : "deletion";
+            string triggeredAt = System.DateTime.UtcNow.ToString(NotificationDateFormat);
 
             var relevantSubscriptions = subscriptions
-                .Where(sub => sub.Evt == 3 || sub.Evt == eventCode)
-                .Where(sub => !string.IsNullOrWhiteSpace(sub.Endpoint))
-                .ToList();
+                .FindAll(sub => sub.Evt == 3 || sub.Evt == eventCode)
+                .FindAll(sub => !string.IsNullOrWhiteSpace(sub.Endpoint));
 
             if (relevantSubscriptions.Count == 0)
                 return;
 
             var httpSubscriptions = relevantSubscriptions
-                .Where(sub =>
-                    sub.Endpoint.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
-                    || sub.Endpoint.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
-                )
-                .ToList();
+                .FindAll(sub =>
+                    sub.Endpoint.StartsWith("http://", System.StringComparison.OrdinalIgnoreCase)
+                    || sub.Endpoint.StartsWith("https://", System.StringComparison.OrdinalIgnoreCase)
+                );
 
             var mqttSubscriptions = relevantSubscriptions
-                .Where(sub => sub.Endpoint.StartsWith("mqtt://", StringComparison.OrdinalIgnoreCase))
-                .ToList();
+                .FindAll(sub => sub.Endpoint.StartsWith("mqtt://", System.StringComparison.OrdinalIgnoreCase));
 
-            var resourceInfo = BuildResourceInfo(appName, containerName, contentInstance);
-            var mqttTopic = $"api/somiod/{appName}/{containerName}";
-            var tasks = new List<Task>();
+            SOMOID.Models.NotificationResourceInfo resourceInfo =
+                BuildResourceInfo(appName, containerName, contentInstance);
 
-            foreach (var subscription in httpSubscriptions)
+            string mqttTopic = $"api/somiod/{appName}/{containerName}";
+            var tasks = new System.Collections.Generic.List<System.Threading.Tasks.Task>();
+
+            foreach (SOMOID.Models.Subscription subscription in httpSubscriptions)
             {
-                var payload = CreateNotificationPayload(subscription, eventTypeName, eventCode, resourceInfo, triggeredAt);
+                SOMOID.Models.NotificationPayload payload = CreateNotificationPayload(subscription, eventTypeName, eventCode, resourceInfo, triggeredAt);
                 PersistNotificationPayload(payload, appName);
                 tasks.Add(SendHttpNotificationAsync(subscription.Endpoint, payload));
             }
 
-            foreach (var subscription in mqttSubscriptions)
+            foreach (SOMOID.Models.Subscription subscription in mqttSubscriptions)
             {
-                var payload = CreateNotificationPayload(subscription, eventTypeName, eventCode, resourceInfo, triggeredAt);
+                SOMOID.Models.NotificationPayload payload = CreateNotificationPayload(subscription, eventTypeName, eventCode, resourceInfo, triggeredAt);
                 PersistNotificationPayload(payload, appName);
-                tasks.Add(Task.Run(() => SendMqttNotification(
-                    subscription.Endpoint,
-                    mqttTopic,
-                    payload
-                )));
+                tasks.Add(System.Threading.Tasks.Task.Run(() => SendMqttNotification(subscription.Endpoint, mqttTopic, payload)));
             }
 
             if (tasks.Count > 0)
-            {
-                await Task.WhenAll(tasks);
-            }
+                await System.Threading.Tasks.Task.WhenAll(tasks);
         }
 
-        private static NotificationPayload CreateNotificationPayload(
-            Subscription subscription,
+        private static SOMOID.Models.NotificationPayload CreateNotificationPayload(
+            SOMOID.Models.Subscription subscription,
             string eventTypeName,
             int eventCode,
-            NotificationResourceInfo resourceInfo,
+            SOMOID.Models.NotificationResourceInfo resourceInfo,
             string triggeredAt
         )
         {
-            return new NotificationPayload
+            return new SOMOID.Models.NotificationPayload
             {
                 EventType = eventTypeName,
                 EventCode = eventCode,
-                Subscription = new NotificationSubscriptionInfo
+                Subscription = new SOMOID.Models.NotificationSubscriptionInfo
                 {
                     ResourceName = subscription.ResourceName,
                     Evt = subscription.Evt,
@@ -290,13 +311,13 @@ namespace SOMOID.Controllers
             };
         }
 
-        private NotificationResourceInfo BuildResourceInfo(
+        private SOMOID.Models.NotificationResourceInfo BuildResourceInfo(
             string appName,
             string containerName,
-            ContentInstance contentInstance
+            SOMOID.Models.ContentInstance contentInstance
         )
         {
-            return new NotificationResourceInfo
+            return new SOMOID.Models.NotificationResourceInfo
             {
                 ResourceName = contentInstance.ResourceName,
                 CreationDatetime = contentInstance.CreationDatetime.ToString(NotificationDateFormat),
@@ -309,56 +330,56 @@ namespace SOMOID.Controllers
             };
         }
 
-        private void PersistNotificationPayload(NotificationPayload payload, string appName)
+        private void PersistNotificationPayload(SOMOID.Models.NotificationPayload payload, string appName)
         {
             try
             {
-                NotificationXmlHelper.SerializeAndSave(payload, appName);
+                SOMOID.Helpers.NotificationXmlHelper.SerializeAndSave(payload, appName);
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
-                Debug.WriteLine($"Failed to persist notification XML for {appName}: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Failed to persist notification XML for {appName}: {ex.Message}");
             }
         }
 
-        private async Task SendHttpNotificationAsync(string endpoint, NotificationPayload payload)
+        private async System.Threading.Tasks.Task SendHttpNotificationAsync(string endpoint, SOMOID.Models.NotificationPayload payload)
         {
             try
             {
-                var body = JsonConvert.SerializeObject(payload);
-                using (var content = new StringContent(body, Encoding.UTF8, "application/json"))
-                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5)))
+                string body = Newtonsoft.Json.JsonConvert.SerializeObject(payload);
+                using (var content = new System.Net.Http.StringContent(body, System.Text.Encoding.UTF8, "application/json"))
+                using (var cts = new System.Threading.CancellationTokenSource(System.TimeSpan.FromSeconds(5)))
                 {
-                    var response = await HttpClient.PostAsync(endpoint, content, cts.Token);
+                    System.Net.Http.HttpResponseMessage response = await HttpClient.PostAsync(endpoint, content, cts.Token);
                     if (!response.IsSuccessStatusCode)
                     {
-                        Debug.WriteLine(
+                        System.Diagnostics.Debug.WriteLine(
                             $"HTTP notification to {endpoint} failed with status {(int)response.StatusCode}"
                         );
                     }
                 }
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
-                Debug.WriteLine($"HTTP notification to {endpoint} failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"HTTP notification to {endpoint} failed: {ex.Message}");
             }
         }
 
-        private void SendMqttNotification(string brokerEndpoint, string topic, NotificationPayload payload)
+        private void SendMqttNotification(string brokerEndpoint, string topic, SOMOID.Models.NotificationPayload payload)
         {
             try
             {
-                var jsonPayload = JsonConvert.SerializeObject(payload);
-                var success = MqttHelper.PublishNotification(brokerEndpoint, topic, jsonPayload);
+                string jsonPayload = Newtonsoft.Json.JsonConvert.SerializeObject(payload);
+                bool success = SOMOID.Helpers.MqttHelper.PublishNotification(brokerEndpoint, topic, jsonPayload);
 
                 if (!success)
                 {
-                    Debug.WriteLine($"MQTT notification to {brokerEndpoint} on topic '{topic}' failed");
+                    System.Diagnostics.Debug.WriteLine($"MQTT notification to {brokerEndpoint} on topic '{topic}' failed");
                 }
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
-                Debug.WriteLine($"MQTT notification to {brokerEndpoint} failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"MQTT notification to {brokerEndpoint} failed: {ex.Message}");
             }
         }
     }

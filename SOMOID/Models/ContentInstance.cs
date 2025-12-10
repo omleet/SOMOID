@@ -8,14 +8,17 @@ namespace SOMOID.Models
 {
     public class ContentInstance
     {
+        [JsonProperty("resource-name")]
         public string ResourceName { get; set; }
+
         [JsonProperty("creation-datetime")]
         public DateTime CreationDatetime { get; set; }
+
+
         public string ContainerResourceName { get; set; }
         public string ApplicationResourceName { get; set; }
         [JsonProperty("res-type")]
-
-        public string ResType { get; set; }
+        public string ResType => "content-instance";
         [JsonProperty("content-type")]
         public string ContentType { get; set; }
         [JsonProperty("content")]

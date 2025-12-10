@@ -92,6 +92,8 @@ namespace SOMOID.Controllers
             [FromBody] Subscription value
         )
         {
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] -> {DateTime.UtcNow} BODY: {value?.ToString()}");
+
             var validator = new SubscriptionValidator();
             var errors = validator.Validate(value);
 
@@ -100,10 +102,12 @@ namespace SOMOID.Controllers
 
 
             // Configurar propriedades automáticas
-            value.ResType = "subscription";
             value.ContainerResourceName = containerName;
             value.ApplicationResourceName = appName;
             value.CreationDatetime = DateTime.UtcNow;
+            System.Diagnostics.Debug.WriteLine($"[DEBUG value] -> {DateTime.UtcNow} BODY: {value?.ToString()}");
+
+            
    
             try
             {
@@ -120,7 +124,6 @@ namespace SOMOID.Controllers
                     value.CreationDatetime,
                     containerName,
                     value.ApplicationResourceName,
-                    value.ResType,
                     value.Evt,
                     value.Endpoint
                 );
@@ -150,6 +153,8 @@ namespace SOMOID.Controllers
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] -> {DateTime.UtcNow} Error while creating subscription");
+
                 return InternalServerError(ex);
             }
         }

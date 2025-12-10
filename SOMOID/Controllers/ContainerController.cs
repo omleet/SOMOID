@@ -80,7 +80,6 @@ namespace SOMOID.Controllers
                 return Content(HttpStatusCode.BadRequest, new { errors });
             }
 
-            value.ResType = "container";
             value.ApplicationResourceName = appName;
             value.CreationDatetime = DateTime.UtcNow;
 

@@ -18,216 +18,254 @@ namespace SOMOID.Helpers
             EnsureScopedSchema();
         }
 
+        /// <summary>
+        /// Retrieves all application names as API paths.
+        /// </summary>
+        /// <returns>List of application API paths in the format /api/somiod/{appName}</returns>
         public List<string> GetAllApplications()
         {
-            var paths = new List<string>();
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    "SELECT [resource-name] FROM [application] ORDER BY [creation-datetime]",
-                    conn
-                )
-            )
+            List<string> paths = new List<string>();
+
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(
+                "SELECT [resource-name] FROM [application] ORDER BY [creation-datetime]",
+                conn
+            ))
             {
                 conn.Open();
-                using (var reader = cmd.ExecuteReader())
+                using (SqlDataReader reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
                     {
                         string appName = (string)reader["resource-name"];
-                        paths.Add($"/api/somiod/{appName}");
+                        paths.Add(string.Format("/api/somiod/{0}", appName));
                     }
                 }
             }
+
             return paths;
         }
 
+        /// <summary>
+        /// Retrieves all container names across all applications as API paths.
+        /// </summary>
+        /// <returns>List of container API paths in the format /api/somiod/{appName}/{containerName}</returns>
         public List<string> GetAllContainers()
         {
-            var containerPaths = new List<string>();
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    @"
-                        SELECT a.[resource-name] AS appName,
-                               c.[resource-name] AS contName
-                        FROM [container] c
-                        JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+            List<string> containerPaths = new List<string>();
 
-                        ORDER BY a.[resource-name], c.[creation-datetime]",
-                    conn
-                )
-            )
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(
+                @"
+            SELECT a.[resource-name] AS appName,
+                   c.[resource-name] AS contName
+            FROM [container] c
+            JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+            ORDER BY a.[resource-name], c.[creation-datetime]",
+                conn
+            ))
             {
-               conn.Open();
-                using (var reader = cmd.ExecuteReader())
+                conn.Open();
+                using (SqlDataReader reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
                     {
                         string appName = (string)reader["appName"];
                         string contName = (string)reader["contName"];
-                        containerPaths.Add($"/api/somiod/{appName}/{contName}");
+                        containerPaths.Add(string.Format("/api/somiod/{0}/{1}", appName, contName));
                     }
                 }
             }
+
             return containerPaths;
         }
 
+        /// <summary>
+        /// Retrieves all container names for a specific application as API paths.
+        /// </summary>
+        /// <param name="appName">The name of the application.</param>
+        /// <returns>List of container API paths in the format /api/somiod/{appName}/{containerName}</returns>
         public List<string> GetAllContainers(string appName)
         {
-            var containerPaths = new List<string>();
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    @"
-                        SELECT c.[resource-name]
-                        FROM [container] c
-                        JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                        WHERE a.[resource-name] = @appName
-                         
-                        ORDER BY c.[creation-datetime]",
-                    conn
-                )
-            )
+            List<string> containerPaths = new List<string>();
+
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(
+                @"
+            SELECT c.[resource-name] AS containerName
+            FROM [container] c
+            JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+            WHERE a.[resource-name] = @appName
+            ORDER BY c.[creation-datetime]",
+                conn
+            ))
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
                 conn.Open();
-                using (var reader = cmd.ExecuteReader())
+
+                using (SqlDataReader reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
                     {
-                        string contName = (string)reader["resource-name"];
-                        containerPaths.Add($"/api/somiod/{appName}/{contName}");
+                        string containerName = (string)reader["containerName"];
+                        // Build API path using string interpolation
+                        string path = $"/api/somiod/{appName}/{containerName}";
+                        containerPaths.Add(path);
                     }
                 }
             }
+
             return containerPaths;
         }
 
+        /// <summary>
+        /// Retrieves all content instances across all applications and containers as API paths.
+        /// </summary>
+        /// <returns>List of content instance API paths in the format /api/somiod/{appName}/{containerName}/{contentInstanceName}</returns>
         public List<string> GetAllContentInstances()
         {
-            var paths = new List<string>();
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    @"
-                SELECT a.[resource-name] AS appName,
-                       c.[resource-name] AS contName,
-                       ci.[resource-name] AS ciName
-                FROM [content-instance] ci
-                JOIN [container] c ON c.[resource-name] = ci.[container-resource-name]
-                                    AND c.[application-resource-name] = ci.[application-resource-name]
-                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                
-                ORDER BY a.[resource-name], c.[resource-name], ci.[creation-datetime]",
-                    conn
-                )
-            )
-            {
-                conn.Open();
-                using (var reader = cmd.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        string aName = (string)reader["appName"];
-                        string cName = (string)reader["contName"];
-                        string ciName = (string)reader["ciName"];
-                        paths.Add($"/api/somiod/{aName}/{cName}/{ciName}");
-                    }
-                }
-            }
-            return paths;
-        }
+            List<string> paths = new List<string>();
 
-        public List<string> GetAllSubscriptions()
-        {
-            var subscriptionPaths = new List<string>();
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    @"
-                SELECT a.[resource-name] AS appName,
-                       c.[resource-name] AS contName,
-                       s.[resource-name] AS subName
-                FROM [subscription] s
-                JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
-                                    AND c.[application-resource-name] = s.[application-resource-name]
-                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                
-                ORDER BY a.[resource-name], c.[resource-name], s.[creation-datetime]",
-                    conn
-                )
-            )
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(
+                @"
+            SELECT a.[resource-name] AS appName,
+                   c.[resource-name] AS contName,
+                   ci.[resource-name] AS ciName
+            FROM [content-instance] ci
+            JOIN [container] c ON c.[resource-name] = ci.[container-resource-name]
+                                AND c.[application-resource-name] = ci.[application-resource-name]
+            JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+            ORDER BY a.[resource-name], c.[resource-name], ci.[creation-datetime]",
+                conn
+            ))
             {
-                
                 conn.Open();
-                using (var reader = cmd.ExecuteReader())
+
+                using (SqlDataReader reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
                     {
                         string appName = (string)reader["appName"];
-                        string contName = (string)reader["contName"];
-                        string subName = (string)reader["subName"];
-                        subscriptionPaths.Add($"/api/somiod/{appName}/{contName}/subs/{subName}");
+                        string containerName = (string)reader["contName"];
+                        string ciName = (string)reader["ciName"];
+                        // Build API path using string interpolation
+                        string path = $"/api/somiod/{appName}/{containerName}/{ciName}";
+                        paths.Add(path);
                     }
                 }
             }
+
+            return paths;
+        }
+
+
+        /// <summary>
+        /// Retrieves all subscriptions across all applications and containers as API paths.
+        /// </summary>
+        /// <returns>List of subscription API paths in the format /api/somiod/{appName}/{containerName}/subs/{subName}</returns>
+        public List<string> GetAllSubscriptions()
+        {
+            List<string> subscriptionPaths = new List<string>();
+
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(
+                @"
+            SELECT a.[resource-name] AS appName,
+                   c.[resource-name] AS contName,
+                   s.[resource-name] AS subName
+            FROM [subscription] s
+            JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
+                                AND c.[application-resource-name] = s.[application-resource-name]
+            JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+            ORDER BY a.[resource-name], c.[resource-name], s.[creation-datetime]",
+                conn
+            ))
+            {
+                conn.Open();
+
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        string appName = (string)reader["appName"];
+                        string containerName = (string)reader["contName"];
+                        string subName = (string)reader["subName"];
+                        // Build API path using string interpolation
+                        string path = $"/api/somiod/{appName}/{containerName}/subs/{subName}";
+                        subscriptionPaths.Add(path);
+                    }
+                }
+            }
+
             return subscriptionPaths;
         }
 
+        /// <summary>
+        /// Retrieves all subscriptions for a specific application and container as API paths.
+        /// </summary>
+        /// <param name="appName">The name of the application.</param>
+        /// <param name="containerName">The name of the container.</param>
+        /// <returns>List of subscription API paths in the format /api/somiod/{appName}/{containerName}/subs/{subName}</returns>
         public List<string> GetAllSubscriptions(string appName, string containerName)
         {
-            var subscriptionPaths = new List<string>();
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    @"
-                    SELECT s.[resource-name]
-                    FROM [subscription] s
-                    JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
-                                         AND c.[application-resource-name] = s.[application-resource-name]
-                    JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                    WHERE a.[resource-name] = @appName
-                    AND c.[resource-name] = @containerName
-                    
-                    ORDER BY s.[creation-datetime]",
-                    conn
-                )
-            )
+            List<string> subscriptionPaths = new List<string>();
+
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(
+                @"
+            SELECT s.[resource-name] AS subName
+            FROM [subscription] s
+            JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
+                                 AND c.[application-resource-name] = s.[application-resource-name]
+            JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+            WHERE a.[resource-name] = @appName
+            AND c.[resource-name] = @containerName
+            ORDER BY s.[creation-datetime]",
+                conn
+            ))
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
                 cmd.Parameters.AddWithValue("@containerName", containerName);
-               
+
                 conn.Open();
-                using (var reader = cmd.ExecuteReader())
+
+                using (SqlDataReader reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
                     {
-                        string subName = (string)reader["resource-name"];
-                        subscriptionPaths.Add(
-                            $"/api/somiod/{appName}/{containerName}/subs/{subName}"
-                        );
+                        string subName = (string)reader["subName"];
+                        // Build API path using string interpolation
+                        string path = $"/api/somiod/{appName}/{containerName}/subs/{subName}";
+                        subscriptionPaths.Add(path);
                     }
                 }
             }
+
             return subscriptionPaths;
         }
 
+
+        /// <summary>
+        /// Retrieves a subscription by application name, container name, and subscription name.
+        /// </summary>
+        /// <param name="appName">The name of the application.</param>
+        /// <param name="containerName">The name of the container.</param>
+        /// <param name="subName">The name of the subscription.</param>
+        /// <returns>A Subscription object if found; otherwise, null.</returns>
         public Subscription GetSubscriptionByAppName(
             string appName,
             string containerName,
             string subName
         )
         {
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    @"
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(
+                @"
             SELECT s.[resource-name],
                    s.[creation-datetime],
                    s.[container-resource-name],
                    s.[application-resource-name],
-                  
                    s.[evt],
                    s.[endpoint]
             FROM [subscription] s
@@ -236,18 +274,17 @@ namespace SOMOID.Helpers
             JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
             WHERE a.[resource-name] = @appName
               AND c.[resource-name] = @containerName
-              AND s.[resource-name] = @subName
-              ",
-                    conn
-                )
-            )
+              AND s.[resource-name] = @subName",
+                conn
+            ))
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
                 cmd.Parameters.AddWithValue("@containerName", containerName);
                 cmd.Parameters.AddWithValue("@subName", subName);
-                
+
                 conn.Open();
-                using (var reader = cmd.ExecuteReader())
+
+                using (SqlDataReader reader = cmd.ExecuteReader())
                 {
                     if (reader.Read())
                     {
@@ -257,28 +294,33 @@ namespace SOMOID.Helpers
                             CreationDatetime = (DateTime)reader["creation-datetime"],
                             ContainerResourceName = (string)reader["container-resource-name"],
                             ApplicationResourceName = (string)reader["application-resource-name"],
-                            
                             Evt = (int)reader["evt"],
-                            Endpoint = (string)reader["endpoint"],
+                            Endpoint = (string)reader["endpoint"]
                         };
                     }
                 }
             }
+
             return null;
         }
 
+        /// <summary>
+        /// Retrieves all subscriptions for a specific application and container.
+        /// </summary>
+        /// <param name="appName">The name of the application.</param>
+        /// <param name="containerName">The name of the container.</param>
+        /// <returns>List of Subscription objects for the specified container.</returns>
         public List<Subscription> GetSubscriptionsForContainer(string appName, string containerName)
         {
-            var subscriptions = new List<Subscription>();
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    @"
+            List<Subscription> subscriptions = new List<Subscription>();
+
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(
+                @"
             SELECT s.[resource-name],
                    s.[creation-datetime],
                    s.[container-resource-name],
                    s.[application-resource-name],
-                   
                    s.[evt],
                    s.[endpoint]
             FROM [subscription] s
@@ -286,16 +328,16 @@ namespace SOMOID.Helpers
                                  AND c.[application-resource-name] = s.[application-resource-name]
             JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
             WHERE a.[resource-name] = @appName
-              AND c.[resource-name] = @containerName
-              ",
-                    conn
-                )
-            )
+              AND c.[resource-name] = @containerName",
+                conn
+            ))
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
                 cmd.Parameters.AddWithValue("@containerName", containerName);
+
                 conn.Open();
-                using (var reader = cmd.ExecuteReader())
+
+                using (SqlDataReader reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
                     {
@@ -306,112 +348,153 @@ namespace SOMOID.Helpers
                                 CreationDatetime = (DateTime)reader["creation-datetime"],
                                 ContainerResourceName = (string)reader["container-resource-name"],
                                 ApplicationResourceName = (string)reader["application-resource-name"],
-                               
                                 Evt = (int)reader["evt"],
-                                Endpoint = (string)reader["endpoint"],
+                                Endpoint = (string)reader["endpoint"]
                             }
                         );
                     }
                 }
             }
+
             return subscriptions;
         }
 
+        /// <summary>
+        /// Checks if the parent container exists for a subscription in a specific application.
+        /// </summary>
+        /// <param name="appName">The name of the application.</param>
+        /// <param name="containerName">The name of the container.</param>
+        /// <returns>The count of matching parent containers (0 if none found).</returns>
         public int CheckIfSubscriptionParentExists(string appName, string containerName)
         {
             int containerCount = 0;
+
             string sqlCheckParent =
                 @"
-                SELECT COUNT(*)
-                FROM [container] c 
-                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                WHERE a.[resource-name] = @applicationName 
-                AND c.[resource-name] = @containerName
-                ";
-            using (var conn = new SqlConnection(connection))
+            SELECT COUNT(*)
+            FROM [container] c 
+            JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+            WHERE a.[resource-name] = @applicationName 
+              AND c.[resource-name] = @containerName
+        ";
+
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmdCheckParent = new SqlCommand(sqlCheckParent, conn))
             {
-                conn.Open();
-                var cmdCheckParent = new SqlCommand(sqlCheckParent, conn);
                 cmdCheckParent.Parameters.AddWithValue("@applicationName", appName);
                 cmdCheckParent.Parameters.AddWithValue("@containerName", containerName);
+
+                conn.Open();
                 containerCount = (int)cmdCheckParent.ExecuteScalar();
             }
+
             return containerCount;
         }
 
+        /// <summary>
+        /// Checks if a subscription already exists in a specific application and container.
+        /// </summary>
+        /// <param name="appName">The name of the application.</param>
+        /// <param name="containerName">The name of the container.</param>
+        /// <param name="subName">The name of the subscription.</param>
+        /// <returns>The count of matching subscriptions (0 if none found).</returns>
         public int CheckIfSubscriptionAlreadyExists(string appName, string containerName, string subName)
         {
             int subCount = 0;
+
             string sqlCheckDuplicate =
                 @"
-                SELECT COUNT(*)
-                FROM [subscription]
-                WHERE [resource-name] = @subName
-                AND [container-resource-name] = @containerName
-                AND [application-resource-name] = @appName";
-            using (var conn = new SqlConnection(connection))
+            SELECT COUNT(*)
+            FROM [subscription]
+            WHERE [resource-name] = @subName
+              AND [container-resource-name] = @containerName
+              AND [application-resource-name] = @appName
+        ";
+
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmdCheckDuplicate = new SqlCommand(sqlCheckDuplicate, conn))
             {
-                conn.Open();
-                var cmdCheckDuplicate = new SqlCommand(sqlCheckDuplicate, conn);
                 cmdCheckDuplicate.Parameters.AddWithValue("@subName", subName);
                 cmdCheckDuplicate.Parameters.AddWithValue("@containerName", containerName);
                 cmdCheckDuplicate.Parameters.AddWithValue("@appName", appName);
+
+                conn.Open();
                 subCount = (int)cmdCheckDuplicate.ExecuteScalar();
             }
+
             return subCount;
         }
 
+        /// <summary>
+        /// Inserts a new subscription into the database for a specific application and container.
+        /// </summary>
+        /// <param name="resourceName">The name of the subscription resource.</param>
+        /// <param name="creationTimeDate">The creation datetime of the subscription.</param>
+        /// <param name="containerName">The name of the container where the subscription belongs.</param>
+        /// <param name="appName">The name of the application where the subscription belongs.</param>
+        /// <param name="evt">The event code associated with the subscription.</param>
+        /// <param name="endpoint">The endpoint URL for the subscription.</param>
+        /// <returns>The number of rows affected by the insert operation.</returns>
         public int InsertNewSubscription(
             string resourceName,
             DateTime creationTimeDate,
             string containerName,
             string appName,
-            string resType,
             int evt,
             string endpoint
         )
         {
             int rowsAffected = 0;
+
             string sqlInsert =
                 @"
-                INSERT INTO [subscription]
-                ([resource-name], [creation-datetime], [container-resource-name], [application-resource-name], [evt], [endpoint])
-                VALUES (@resourceName, @creationDatetime, @containerResourceName, @appName, @resType, @evt, @endpoint)";
-            using (var conn = new SqlConnection(connection))
+            INSERT INTO [subscription]
+            ([resource-name], [creation-datetime], [container-resource-name], [application-resource-name], [evt], [endpoint])
+            VALUES (@resourceName, @creationDatetime, @containerResourceName, @appName, @evt, @endpoint)
+        ";
+
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(sqlInsert, conn))
             {
-                conn.Open();
-                var cmd = new SqlCommand(sqlInsert, conn);
                 cmd.Parameters.AddWithValue("@resourceName", resourceName);
                 cmd.Parameters.AddWithValue("@creationDatetime", creationTimeDate);
                 cmd.Parameters.AddWithValue("@containerResourceName", containerName);
                 cmd.Parameters.AddWithValue("@appName", appName);
-                cmd.Parameters.AddWithValue("@resType", resType);
                 cmd.Parameters.AddWithValue("@evt", evt);
                 cmd.Parameters.AddWithValue("@endpoint", endpoint);
+
+                conn.Open();
                 rowsAffected = cmd.ExecuteNonQuery();
             }
+
             return rowsAffected;
         }
 
+
+        /// <summary>
+        /// Retrieves a single application by its resource name.
+        /// </summary>
+        /// <param name="appName">The name of the application to retrieve.</param>
+        /// <returns>
+        /// An <see cref="Application"/> object if found; otherwise, <c>null</c>.
+        /// </returns>
         public Application GetApplication(string appName)
         {
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    @"
-                SELECT [resource-name],
-                       [creation-datetime]
-                      
-                FROM [application]
-                WHERE [resource-name] = @appName
-                  ",
-                    conn
-                )
-            )
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(
+                @"
+            SELECT [resource-name],
+                   [creation-datetime]
+            FROM [application]
+            WHERE [resource-name] = @appName
+        ",
+                conn
+            ))
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
                 conn.Open();
-                using (var reader = cmd.ExecuteReader())
+
+                using (SqlDataReader reader = cmd.ExecuteReader())
                 {
                     if (reader.Read())
                     {
@@ -419,93 +502,129 @@ namespace SOMOID.Helpers
                         {
                             ResourceName = (string)reader["resource-name"],
                             CreationDatetime = (DateTime)reader["creation-datetime"],
- 
                         };
                     }
                 }
             }
+
             return null;
         }
 
+
+        /// <summary>
+        /// Retrieves the SOMOID resource type for a given application.
+        /// Since applications always have a fixed resource type of "application",
+        /// this method returns the constant if the application exists.
+        /// </summary>
+        /// <param name="appName">The name of the application.</param>
+        /// <returns>
+        /// The string "application" if the application exists; otherwise, <c>null</c>.
+        /// </returns>
+        [Obsolete("GetApplicationResTypeValue is deprecated and will be removed in a future release. Resource type is now inferred from URL path.")]
+
         public string GetApplicationResTypeValue(string appName)
         {
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    @"
-                SELECT *
-                FROM [application]
-                WHERE [resource-name] = @appName",
-                    conn
-                )
-            )
+            string sql =
+                @"
+            SELECT [resource-name]
+            FROM [application]
+            WHERE [resource-name] = @appName
+        ";
+
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(sql, conn))
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
+
                 conn.Open();
-                var result = cmd.ExecuteScalar();
-                return result == null || result == DBNull.Value ? null : (string)result;
+                object result = cmd.ExecuteScalar();
+
+                if (result == null || result == DBNull.Value)
+                {
+                    return null; // Application not found
+                }
+
+                // SOMOID rule: application resource type is always "application"
+                return "application";
             }
         }
 
+
+        /// <summary>
+        /// Inserts a new application into the database.
+        /// </summary>
+        /// <param name="value">The application model to insert.</param>
+        /// <returns>True if the insert succeeded, otherwise false.</returns>
         public bool InsertApplication(Application value)
         {
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    @"
-                INSERT INTO [application]
+            string sql =
+                @"
+            INSERT INTO [application]
                 ([resource-name], [creation-datetime])
-                VALUES (@resourceName, @creationDatetime, @resType)",
-                    conn
-                )
-            )
+            VALUES (@resourceName, @creationDatetime)
+        ";
+
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(sql, conn))
             {
                 cmd.Parameters.AddWithValue("@resourceName", value.ResourceName);
                 cmd.Parameters.AddWithValue("@creationDatetime", value.CreationDatetime);
-                cmd.Parameters.AddWithValue("@resType", value.ResType);
+
                 conn.Open();
                 return cmd.ExecuteNonQuery() > 0;
             }
         }
 
+
+        /// <summary>
+        /// Renames an existing application by updating its resource name.
+        /// </summary>
+        /// <param name="currentName">The current name of the application.</param>
+        /// <param name="newName">The new name to assign to the application.</param>
+        /// <returns>
+        /// The updated <see cref="Application"/> object if the operation succeeds;  
+        /// otherwise, <c>null</c> if the application does not exist.
+        /// </returns>
         public Application RenameApplication(string currentName, string newName)
         {
-            using (var conn = new SqlConnection(connection))
+            using (SqlConnection conn = new SqlConnection(connection))
             {
                 conn.Open();
-                using (
-                    var cmd = new SqlCommand(
-                        @"
-                    UPDATE [application]
-                    SET [resource-name] = @newName
-                    WHERE [resource-name] = @currentName
-                      ",
-                        conn
-                    )
-                )
+
+                // Update name
+                using (SqlCommand cmd = new SqlCommand(
+                    @"
+                UPDATE [application]
+                SET [resource-name] = @newName
+                WHERE [resource-name] = @currentName
+            ",
+                    conn
+                ))
                 {
                     cmd.Parameters.AddWithValue("@newName", newName);
                     cmd.Parameters.AddWithValue("@currentName", currentName);
-                    var rows = cmd.ExecuteNonQuery();
+
+                    int rows = cmd.ExecuteNonQuery();
                     if (rows == 0)
-                        return null;
+                    {
+                        return null; // nothing updated — application not found
+                    }
                 }
 
-                using (
-                    var cmdGet = new SqlCommand(
-                        @"
-                    SELECT [resource-name],
-                           [creation-datetime],
-
-                    FROM [application]
-                    WHERE [resource-name] = @appName
-                      ",
-                        conn
-                    )
-                )
+                // Fetch updated row
+                using (SqlCommand cmdGet = new SqlCommand(
+                    @"
+                SELECT [resource-name],
+                       [creation-datetime]
+                FROM [application]
+                WHERE [resource-name] = @appName
+            ",
+                    conn
+                ))
                 {
                     cmdGet.Parameters.AddWithValue("@appName", newName);
-                    using (var reader = cmdGet.ExecuteReader())
+
+                    using (SqlDataReader reader = cmdGet.ExecuteReader())
                     {
                         if (reader.Read())
                         {
@@ -518,70 +637,88 @@ namespace SOMOID.Helpers
                     }
                 }
             }
+
             return null;
         }
 
-        
+        /// <summary>
+        /// Permanently deletes an application from the database by its resource name.
+        /// </summary>
+        /// <param name="appName">The name of the application to delete.</param>
+        /// <returns>True if the application was deleted; otherwise, false.</returns>
         public bool HardDeleteApplication(string appName)
         {
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    @"
-                DELETE [application]
-                WHERE [resource-name] = @appName",
-                    conn
-                )
-            )
+            string sql =
+                @"
+            DELETE FROM [application]
+            WHERE [resource-name] = @appName
+        ";
+
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(sql, conn))
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
+
                 conn.Open();
                 return cmd.ExecuteNonQuery() > 0;
             }
         }
 
+
+        /// <summary>
+        /// Checks whether an application with the specified name exists in the database.
+        /// </summary>
+        /// <param name="appName">The name of the application to check.</param>
+        /// <returns>True if the application exists; otherwise, false.</returns>
         public bool ApplicationExists(string appName)
         {
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    @"
-                SELECT COUNT(*)
-                FROM [application]
-                WHERE [resource-name] = @appName",
-                    conn
-                )
-            )
+            string sql =
+                @"
+            SELECT COUNT(*)
+            FROM [application]
+            WHERE [resource-name] = @appName
+        ";
+
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(sql, conn))
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
+
                 conn.Open();
                 return (int)cmd.ExecuteScalar() > 0;
             }
         }
 
+
+        /// <summary>
+        /// Retrieves a single container by its name within a specific application.
+        /// </summary>
+        /// <param name="appName">The name of the application containing the container.</param>
+        /// <param name="containerName">The name of the container to retrieve.</param>
+        /// <returns>
+        /// The <see cref="Container"/> object if found; otherwise, <c>null</c>.
+        /// </returns>
         public Container GetContainer(string appName, string containerName)
         {
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    @"
-                SELECT c.[resource-name],
-                       c.[creation-datetime],
+            string sql =
+                @"
+            SELECT c.[resource-name],
+                   c.[creation-datetime],
+                   c.[application-resource-name]
+            FROM [container] c
+            JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+            WHERE a.[resource-name] = @appName
+              AND c.[resource-name] = @containerName
+        ";
 
-                       c.[application-resource-name]
-                FROM [container] c
-                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                WHERE a.[resource-name] = @appName
-                  AND c.[resource-name] = @containerName",
-                    conn
-                )
-            )
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(sql, conn))
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
                 cmd.Parameters.AddWithValue("@containerName", containerName);
 
                 conn.Open();
-                using (var reader = cmd.ExecuteReader())
+                using (SqlDataReader reader = cmd.ExecuteReader())
                 {
                     if (reader.Read())
                     {
@@ -589,119 +726,155 @@ namespace SOMOID.Helpers
                         {
                             ResourceName = (string)reader["resource-name"],
                             CreationDatetime = (DateTime)reader["creation-datetime"],
-                
                             ApplicationResourceName = (string)reader["application-resource-name"],
                         };
                     }
                 }
             }
+
             return null;
         }
 
+
+        /// <summary>
+        /// Checks whether a container exists within a specific application.
+        /// </summary>
+        /// <param name="appName">The name of the application containing the container.</param>
+        /// <param name="containerName">The name of the container to check.</param>
+        /// <returns>True if the container exists; otherwise, false.</returns>
         public bool ContainerExists(string appName, string containerName)
         {
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    @"
-                SELECT COUNT(*)
-                FROM [container] c
-                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                WHERE a.[resource-name] = @appName
-                  AND c.[resource-name] = @containerName
-                  ",
-                    conn
-                )
-            )
+            string sql =
+                @"
+            SELECT COUNT(*)
+            FROM [container] c
+            JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+            WHERE a.[resource-name] = @appName
+              AND c.[resource-name] = @containerName
+        ";
+
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(sql, conn))
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
                 cmd.Parameters.AddWithValue("@containerName", containerName);
+
                 conn.Open();
                 return (int)cmd.ExecuteScalar() > 0;
             }
         }
 
+
+        /// <summary>
+        /// Checks whether a container with the specified name exists in a given application.
+        /// </summary>
+        /// <param name="appName">The name of the application containing the container.</param>
+        /// <param name="containerName">The name of the container to check.</param>
+        /// <returns>True if the container exists; otherwise, false.</returns>
         public bool ContainerNameExists(string appName, string containerName)
         {
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    @"
-                SELECT COUNT(*)
-                FROM [container]
-                WHERE [resource-name] = @containerName
-                  AND [application-resource-name] = @appName",
-                    conn
-                )
-            )
+            string sql =
+                @"
+            SELECT COUNT(*)
+            FROM [container]
+            WHERE [resource-name] = @containerName
+              AND [application-resource-name] = @appName
+        ";
+
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(sql, conn))
             {
                 cmd.Parameters.AddWithValue("@containerName", containerName);
                 cmd.Parameters.AddWithValue("@appName", appName);
+
                 conn.Open();
                 return (int)cmd.ExecuteScalar() > 0;
             }
         }
 
+
+        /// <summary>
+        /// Inserts a new container into a specific application.
+        /// </summary>
+        /// <param name="value">The container model to insert.</param>
+        /// <returns>True if the insert succeeded; otherwise, false.</returns>
         public bool InsertContainer(Container value)
         {
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    @"
-                INSERT INTO [container]
+            string sql =
+                @"
+            INSERT INTO [container]
                 ([resource-name], [creation-datetime], [application-resource-name])
-                VALUES (@resourceName, @creationDatetime, @resType, @appResourceName)",
-                    conn
-                )
-            )
+            VALUES (@resourceName, @creationDatetime, @appResourceName)
+        ";
+
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(sql, conn))
             {
                 cmd.Parameters.AddWithValue("@resourceName", value.ResourceName);
                 cmd.Parameters.AddWithValue("@creationDatetime", value.CreationDatetime);
-                cmd.Parameters.AddWithValue("@resType", value.ResType);
                 cmd.Parameters.AddWithValue("@appResourceName", value.ApplicationResourceName);
+
                 conn.Open();
                 return cmd.ExecuteNonQuery() > 0;
             }
         }
 
+
+        /// <summary>
+        /// Renames an existing container within a specific application.
+        /// </summary>
+        /// <param name="appName">The name of the application containing the container.</param>
+        /// <param name="containerName">The current name of the container.</param>
+        /// <param name="newName">The new name to assign to the container.</param>
+        /// <returns>
+        /// The updated <see cref="Container"/> object if the operation succeeds;  
+        /// otherwise, <c>null</c> if the container does not exist.
+        /// </returns>
         public Container RenameContainer(string appName, string containerName, string newName)
         {
-            using (var conn = new SqlConnection(connection))
+            using (SqlConnection conn = new SqlConnection(connection))
             {
                 conn.Open();
-                using (
-                    var cmd = new SqlCommand(
-                        @"
-                    UPDATE [container]
-                    SET [resource-name] = @newName
-                    WHERE [resource-name] = @oldName
-                      AND [application-resource-name] = @appName",
-                        conn
-                    )
-                )
+
+                // Update container name
+                using (SqlCommand cmd = new SqlCommand(
+                    @"
+                UPDATE [container]
+                SET [resource-name] = @newName
+                WHERE [resource-name] = @oldName
+                  AND [application-resource-name] = @appName
+            ",
+                    conn
+                ))
                 {
                     cmd.Parameters.AddWithValue("@newName", newName);
                     cmd.Parameters.AddWithValue("@oldName", containerName);
                     cmd.Parameters.AddWithValue("@appName", appName);
-                    var rows = cmd.ExecuteNonQuery();
+
+                    int rows = cmd.ExecuteNonQuery();
                     if (rows == 0)
-                        return null;
+                    {
+                        return null; // container not found
+                    }
                 }
 
-                using (
-                    var cmdGet = new SqlCommand(
-                        @"
-                    SELECT [resource-name], [creation-datetime], [application-resource-name]
-                    FROM [container]
-                    WHERE [resource-name] = @name
-                      AND [application-resource-name] = @appName",
-                        conn
-                    )
-                )
+                // Retrieve updated container
+                using (SqlCommand cmdGet = new SqlCommand(
+                    @"
+                SELECT [resource-name],
+                       [creation-datetime],
+                       [application-resource-name]
+                FROM [container]
+                WHERE [resource-name] = @name
+                  AND [application-resource-name] = @appName
+            ",
+                    conn
+                ))
                 {
                     cmdGet.Parameters.AddWithValue("@name", newName);
                     cmdGet.Parameters.AddWithValue("@appName", appName);
-                    using (var reader = cmdGet.ExecuteReader())
+
+                    using (SqlDataReader reader = cmdGet.ExecuteReader())
                     {
                         if (reader.Read())
                         {
@@ -709,162 +882,192 @@ namespace SOMOID.Helpers
                             {
                                 ResourceName = (string)reader["resource-name"],
                                 CreationDatetime = (DateTime)reader["creation-datetime"],
-                                ApplicationResourceName = (string)
-                                    reader["application-resource-name"],
+                                ApplicationResourceName = (string)reader["application-resource-name"],
                             };
                         }
                     }
                 }
             }
+
             return null;
         }
 
+
+        /// <summary>
+        /// Deletes a container and all its related content instances and subscriptions.
+        /// </summary>
+        /// <param name="appName">The name of the application containing the container.</param>
+        /// <param name="containerName">The name of the container to delete.</param>
+        /// <returns>True if the container was deleted; otherwise, false.</returns>
         public bool DeleteContainerCascade(string appName, string containerName)
         {
-            using (var conn = new SqlConnection(connection))
+            using (SqlConnection conn = new SqlConnection(connection))
             {
                 conn.Open();
-                using (
-                    var cmdDelCI = new SqlCommand(
-                        @"
-                        DELETE ci
-                        FROM [content-instance] ci
-                        JOIN [container] c ON c.[resource-name] = ci.[container-resource-name]
-                                             AND c.[application-resource-name] = ci.[application-resource-name]
-                        JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                        WHERE a.[resource-name] = @appName
-                          AND c.[resource-name] = @containerName
-                          AND ci.[application-resource-name] = @appName",
-                        conn
-                    )
-                )
+
+                // Delete all content instances in the container
+                using (SqlCommand cmdDelCI = new SqlCommand(
+                    @"
+                DELETE ci
+                FROM [content-instance] ci
+                JOIN [container] c ON c.[resource-name] = ci.[container-resource-name]
+                                     AND c.[application-resource-name] = ci.[application-resource-name]
+                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+                WHERE a.[resource-name] = @appName
+                  AND c.[resource-name] = @containerName
+                  AND ci.[application-resource-name] = @appName
+            ",
+                    conn
+                ))
                 {
                     cmdDelCI.Parameters.AddWithValue("@appName", appName);
                     cmdDelCI.Parameters.AddWithValue("@containerName", containerName);
                     cmdDelCI.ExecuteNonQuery();
                 }
 
-                using (
-                    var cmdDelSub = new SqlCommand(
-                        @"
-                        DELETE s
-                        FROM [subscription] s
-                        JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
-                                             AND c.[application-resource-name] = s.[application-resource-name]
-                        JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                        WHERE a.[resource-name] = @appName
-                          AND c.[resource-name] = @containerName
-                          AND s.[application-resource-name] = @appName",
-                        conn
-                    )
-                )
+                // Delete all subscriptions in the container
+                using (SqlCommand cmdDelSub = new SqlCommand(
+                    @"
+                DELETE s
+                FROM [subscription] s
+                JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
+                                     AND c.[application-resource-name] = s.[application-resource-name]
+                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+                WHERE a.[resource-name] = @appName
+                  AND c.[resource-name] = @containerName
+                  AND s.[application-resource-name] = @appName
+            ",
+                    conn
+                ))
                 {
                     cmdDelSub.Parameters.AddWithValue("@appName", appName);
                     cmdDelSub.Parameters.AddWithValue("@containerName", containerName);
                     cmdDelSub.ExecuteNonQuery();
                 }
 
-                using (
-                    var cmdDelContainer = new SqlCommand(
-                        @"
-                        DELETE c
-                        FROM [container] c
-                        JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                        WHERE a.[resource-name] = @appName
-                          AND c.[resource-name] = @containerName",
-                        conn
-                    )
-                )
+                // Delete the container itself
+                using (SqlCommand cmdDelContainer = new SqlCommand(
+                    @"
+                DELETE c
+                FROM [container] c
+                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+                WHERE a.[resource-name] = @appName
+                  AND c.[resource-name] = @containerName
+            ",
+                    conn
+                ))
                 {
                     cmdDelContainer.Parameters.AddWithValue("@appName", appName);
                     cmdDelContainer.Parameters.AddWithValue("@containerName", containerName);
+
                     return cmdDelContainer.ExecuteNonQuery() > 0;
                 }
             }
         }
 
+        /// <summary>
+        /// Checks whether the parent container exists for a content instance.
+        /// </summary>
+        /// <param name="appName">The name of the application containing the container.</param>
+        /// <param name="containerName">The name of the container to check.</param>
+        /// <returns>
+        /// <c>true</c> if the parent container exists;  
+        /// <c>false</c> if it does not exist.
+        /// </returns>
         public bool ContentInstanceParentExists(string appName, string containerName)
         {
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    @"
-                SELECT COUNT(*)
-                FROM [container] c
-                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                WHERE a.[resource-name] = @appName
-                  AND c.[resource-name] = @containerName
-                  ",
-                    conn
-                )
-            )
+            string sql =
+                @"
+            SELECT COUNT(*)
+            FROM [container] c
+            JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+            WHERE a.[resource-name] = @appName
+              AND c.[resource-name] = @containerName
+        ";
+
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(sql, conn))
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
                 cmd.Parameters.AddWithValue("@containerName", containerName);
-               
+
                 conn.Open();
                 return (int)cmd.ExecuteScalar() > 0;
             }
         }
 
+        /// <summary>
+        /// Checks whether a specific content instance exists within a given container and application.
+        /// </summary>
+        /// <param name="appName">The name of the application containing the container.</param>
+        /// <param name="containerName">The name of the container.</param>
+        /// <param name="ciName">The name of the content instance to check.</param>
+        /// <returns>
+        /// <c>true</c> if the content instance exists;  
+        /// <c>false</c> if it does not exist.
+        /// </returns>
         public bool ContentInstanceExistsInContainer(string appName, string containerName, string ciName)
         {
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    @"
-                SELECT COUNT(*)
-                FROM [content-instance]
-                WHERE [resource-name] = @ciName
-                  AND [container-resource-name] = @containerName
-                  AND [application-resource-name] = @appName",
-                    conn
-                )
-            )
+            string sql =
+                @"
+            SELECT COUNT(*)
+            FROM [content-instance]
+            WHERE [resource-name] = @ciName
+              AND [container-resource-name] = @containerName
+              AND [application-resource-name] = @appName
+        ";
+
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(sql, conn))
             {
                 cmd.Parameters.AddWithValue("@ciName", ciName);
                 cmd.Parameters.AddWithValue("@containerName", containerName);
                 cmd.Parameters.AddWithValue("@appName", appName);
+
                 conn.Open();
                 return (int)cmd.ExecuteScalar() > 0;
             }
         }
 
-        public ContentInstance GetContentInstance(
-            string appName,
-            string containerName,
-            string ciName
-        )
+
+        /// <summary>
+        /// Retrieves a specific content instance within a given container and application.
+        /// </summary>
+        /// <param name="appName">The name of the application containing the container.</param>
+        /// <param name="containerName">The name of the container.</param>
+        /// <param name="ciName">The name of the content instance to retrieve.</param>
+        /// <returns>
+        /// The <see cref="ContentInstance"/> object if found;  
+        /// otherwise, <c>null</c> if the content instance does not exist.
+        /// </returns>
+        public ContentInstance GetContentInstance(string appName, string containerName, string ciName)
         {
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    @"
-                SELECT ci.[resource-name],
-                       ci.[creation-datetime],
-                       ci.[container-resource-name],
-                       ci.[application-resource-name],
-                       ci.[res-type],
-                       ci.[content-type],
-                       ci.[content]
-                FROM [content-instance] ci
-                JOIN [container] c ON c.[resource-name] = ci.[container-resource-name]
-                                    AND c.[application-resource-name] = ci.[application-resource-name]
-                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                WHERE a.[resource-name] = @appName
-                  AND c.[resource-name] = @containerName
-                  AND ci.[resource-name] = @ciName
-                  ",
-                    conn
-                )
-            )
+            string sql =
+                @"
+            SELECT ci.[resource-name],
+                   ci.[creation-datetime],
+                   ci.[container-resource-name],
+                   ci.[application-resource-name],
+                   ci.[content-type],
+                   ci.[content]
+            FROM [content-instance] ci
+            JOIN [container] c ON c.[resource-name] = ci.[container-resource-name]
+                                AND c.[application-resource-name] = ci.[application-resource-name]
+            JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+            WHERE a.[resource-name] = @appName
+              AND c.[resource-name] = @containerName
+              AND ci.[resource-name] = @ciName
+        ";
+
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(sql, conn))
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
                 cmd.Parameters.AddWithValue("@containerName", containerName);
                 cmd.Parameters.AddWithValue("@ciName", ciName);
-                
+
                 conn.Open();
-                using (var reader = cmd.ExecuteReader())
+                using (SqlDataReader reader = cmd.ExecuteReader())
                 {
                     if (reader.Read())
                     {
@@ -874,134 +1077,170 @@ namespace SOMOID.Helpers
                             CreationDatetime = (DateTime)reader["creation-datetime"],
                             ContainerResourceName = (string)reader["container-resource-name"],
                             ApplicationResourceName = (string)reader["application-resource-name"],
-                            ResType = (string)reader["res-type"],
                             ContentType = (string)reader["content-type"],
                             Content = (string)reader["content"],
                         };
                     }
                 }
             }
+
             return null;
         }
 
+
+        /// <summary>
+        /// Inserts a new content instance into a specific container and application.
+        /// </summary>
+        /// <param name="value">The <see cref="ContentInstance"/> object to insert.</param>
+        /// <returns>
+        /// <c>true</c> if the insertion succeeds;  
+        /// <c>false</c> if it fails.
+        /// </returns>
         public bool InsertContentInstance(ContentInstance value)
         {
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    @"
-                INSERT INTO [content-instance]
-                    ([resource-name], [creation-datetime], [container-resource-name], [application-resource-name],
-                     [res-type], [content-type], [content])
-                VALUES (@resourceName, @creationDatetime, @containerResourceName, @appResourceName,
-                        @resType, @contentType, @content)",
-                    conn
-                )
-            )
+            string sql =
+                @"
+            INSERT INTO [content-instance]
+                ([resource-name], [creation-datetime], [container-resource-name], [application-resource-name],
+                 [content-type], [content])
+            VALUES (@resourceName, @creationDatetime, @containerResourceName, @appResourceName,
+                    @contentType, @content)
+        ";
+
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(sql, conn))
             {
                 cmd.Parameters.AddWithValue("@resourceName", value.ResourceName);
                 cmd.Parameters.AddWithValue("@creationDatetime", value.CreationDatetime);
                 cmd.Parameters.AddWithValue("@containerResourceName", value.ContainerResourceName);
                 cmd.Parameters.AddWithValue("@appResourceName", value.ApplicationResourceName);
-                cmd.Parameters.AddWithValue("@resType", value.ResType);
                 cmd.Parameters.AddWithValue("@contentType", value.ContentType);
                 cmd.Parameters.AddWithValue("@content", value.Content);
+
                 conn.Open();
                 return cmd.ExecuteNonQuery() > 0;
             }
         }
 
+
+        /// <summary>
+        /// Deletes a specific content instance within a given container and application.
+        /// </summary>
+        /// <param name="appName">The name of the application containing the container.</param>
+        /// <param name="containerName">The name of the container containing the content instance.</param>
+        /// <param name="ciName">The name of the content instance to delete.</param>
+        /// <returns>
+        /// <c>true</c> if the content instance was deleted;  
+        /// <c>false</c> if it did not exist.
+        /// </returns>
         public bool DeleteContentInstance(string appName, string containerName, string ciName)
         {
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    @"
-                DELETE ci
-                FROM [content-instance] ci
-                JOIN [container] c ON c.[resource-name] = ci.[container-resource-name]
-                                     AND c.[application-resource-name] = ci.[application-resource-name]
-                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                WHERE a.[resource-name] = @appName
-                  AND c.[resource-name] = @containerName
-                  AND ci.[resource-name] = @ciName
-                  AND ci.[application-resource-name] = @appName
-                  ",
-                    conn
-                )
-            )
+            string sql =
+                @"
+            DELETE ci
+            FROM [content-instance] ci
+            JOIN [container] c ON c.[resource-name] = ci.[container-resource-name]
+                                 AND c.[application-resource-name] = ci.[application-resource-name]
+            JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+            WHERE a.[resource-name] = @appName
+              AND c.[resource-name] = @containerName
+              AND ci.[resource-name] = @ciName
+              AND ci.[application-resource-name] = @appName
+        ";
+
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(sql, conn))
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
                 cmd.Parameters.AddWithValue("@containerName", containerName);
                 cmd.Parameters.AddWithValue("@ciName", ciName);
+
                 conn.Open();
                 return cmd.ExecuteNonQuery() > 0;
             }
         }
 
+        /// <summary>
+        /// Retrieves all content instances belonging to a specific application.
+        /// </summary>
+        /// <param name="appName">The name of the application whose content instances are being retrieved.</param>
+        /// <returns>
+        /// A list of paths to all content instances in the format:
+        /// <c>/api/somiod/{appName}/{containerName}/{ciName}</c>.
+        /// </returns>
+        public List<string> GetAllContentInstancesFromApp(string appName)
+        {
+            var paths = new List<string>();
+
+            string sql =
+                @"
+            SELECT c.[resource-name] AS contName,
+                   ci.[resource-name] AS ciName
+            FROM [content-instance] ci
+            JOIN [container] c ON c.[resource-name] = ci.[container-resource-name]
+                                AND c.[application-resource-name] = ci.[application-resource-name]
+            JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+            WHERE a.[resource-name] = @appName
+            ORDER BY c.[resource-name], ci.[creation-datetime]
+        ";
+
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(sql, conn))
+            {
+                cmd.Parameters.AddWithValue("@appName", appName);
+
+                conn.Open();
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        string containerName = (string)reader["contName"];
+                        string ciName = (string)reader["ciName"];
+                        paths.Add($"/api/somiod/{appName}/{containerName}/{ciName}");
+                    }
+                }
+            }
+
+            return paths;
+        }
+
+
+        /// <summary>
+        /// Deletes a specific subscription within a given container and application.
+        /// </summary>
+        /// <param name="appName">The name of the application containing the container.</param>
+        /// <param name="containerName">The name of the container containing the subscription.</param>
+        /// <param name="subName">The name of the subscription to delete.</param>
+        /// <returns>
+        /// <c>true</c> if the subscription was deleted;  
+        /// <c>false</c> if it did not exist.
+        /// </returns>
         public bool DeleteSubscription(string appName, string containerName, string subName)
         {
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    @"
-                DELETE s
-                FROM [subscription] s
-                JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
-                                     AND c.[application-resource-name] = s.[application-resource-name]
-                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                WHERE a.[resource-name] = @appName
-                AND c.[resource-name] = @containerName
-                AND s.[resource-name] = @subName
-                ",
-                    conn
-                )
-            )
+            string sql =
+                @"
+            DELETE s
+            FROM [subscription] s
+            JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
+                                 AND c.[application-resource-name] = s.[application-resource-name]
+            JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
+            WHERE a.[resource-name] = @appName
+              AND c.[resource-name] = @containerName
+              AND s.[resource-name] = @subName
+        ";
+
+            using (SqlConnection conn = new SqlConnection(connection))
+            using (SqlCommand cmd = new SqlCommand(sql, conn))
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
                 cmd.Parameters.AddWithValue("@containerName", containerName);
                 cmd.Parameters.AddWithValue("@subName", subName);
+
                 conn.Open();
                 return cmd.ExecuteNonQuery() > 0;
             }
         }
 
-        public List<string> GetAllContentInstancesFromApp(string appName)
-        {
-            var paths = new List<string>();
-            using (var conn = new SqlConnection(connection))
-            using (
-                var cmd = new SqlCommand(
-                    @"
-                SELECT a.[resource-name] AS appName,
-                       c.[resource-name] AS contName,
-                       ci.[resource-name] AS ciName
-                FROM [content-instance] ci
-                JOIN [container] c ON c.[resource-name] = ci.[container-resource-name]
-                                    AND c.[application-resource-name] = ci.[application-resource-name]
-                JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                WHERE a.[resource-name] = @appName
-                  
-                ORDER BY a.[resource-name], c.[resource-name], ci.[creation-datetime]",
-                    conn
-                )
-            )
-            {
-                cmd.Parameters.AddWithValue("@appName", appName);
-                conn.Open();
-                using (var reader = cmd.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        string aName = (string)reader["appName"];
-                        string cName = (string)reader["contName"];
-                        string ciName = (string)reader["ciName"];
-                        paths.Add($"/api/somiod/{aName}/{cName}/{ciName}");
-                    }
-                }
-            }
-            return paths;
-        }
 
         private static void EnsureScopedSchema()
         {

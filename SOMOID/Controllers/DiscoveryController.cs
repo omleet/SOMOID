@@ -148,6 +148,7 @@ namespace SOMOID.Controllers
         [SwaggerResponse(HttpStatusCode.NotFound, "No subscriptions found")]
         public IHttpActionResult DiscoverSubscriptions(string appName, string containerName)
         {
+            
             try
             {
                 var subscriptions = SQLHelperInstance.GetAllSubscriptions(appName, containerName);

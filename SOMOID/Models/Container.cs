@@ -12,7 +12,7 @@ namespace SOMOID.Models
         [JsonProperty("creation-datetime")]
         public DateTime CreationDatetime { get; set; }
         [JsonProperty("res-type")]
-        public string ResType { get; set; }
+        public string ResType => "container";
         public string ApplicationResourceName { get; set; }
     }
 }
