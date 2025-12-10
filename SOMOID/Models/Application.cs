@@ -21,7 +21,10 @@ namespace SOMOID.Models
         public bool ShouldSerializeLegacyResourceName() => false;
 
         [JsonProperty("res-type")]
-        public string ResType { get; set; }
+        public string ResType => "application";
+
+
+        [JsonProperty("creation-datetime")]
         public DateTime CreationDatetime { get; set; }
     }
 }

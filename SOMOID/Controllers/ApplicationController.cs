@@ -38,8 +38,10 @@ namespace SOMOID.Controllers
             try
             {
                 var app = sqlHelper.GetApplication(appName);
+                
                 if (app == null)
                     return NotFound();
+
                 return Ok(app);
             }
             catch (Exception ex)
@@ -84,7 +86,6 @@ namespace SOMOID.Controllers
                 return Content(HttpStatusCode.BadRequest, new { errors });
             }
 
-            value.ResType = ApplicationResType;
             value.CreationDatetime = DateTime.UtcNow;
             try
             {
@@ -226,7 +227,7 @@ namespace SOMOID.Controllers
         {
             try
             {
-                var deleted = sqlHelper.SoftDeleteApplication(appName);
+                var deleted = sqlHelper.HardDeleteApplication(appName);
                 if (!deleted)
                     return Content(
                         HttpStatusCode.NotFound,

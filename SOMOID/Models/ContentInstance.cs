@@ -9,13 +9,16 @@ namespace SOMOID.Models
     public class ContentInstance
     {
         public string ResourceName { get; set; }
+        [JsonProperty("creation-datetime")]
         public DateTime CreationDatetime { get; set; }
         public string ContainerResourceName { get; set; }
         public string ApplicationResourceName { get; set; }
         [JsonProperty("res-type")]
 
         public string ResType { get; set; }
+        [JsonProperty("content-type")]
         public string ContentType { get; set; }
+        [JsonProperty("content")]
         public string Content { get; set; }
     }
 }

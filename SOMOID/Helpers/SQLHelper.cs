@@ -24,12 +24,11 @@ namespace SOMOID.Helpers
             using (var conn = new SqlConnection(connection))
             using (
                 var cmd = new SqlCommand(
-                    "SELECT [resource-name] FROM [application] WHERE [res-type] = @active ORDER BY [creation-datetime]",
+                    "SELECT [resource-name] FROM [application] ORDER BY [creation-datetime]",
                     conn
                 )
             )
             {
-                cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
                 conn.Open();
                 using (var reader = cmd.ExecuteReader())
                 {
@@ -54,14 +53,13 @@ namespace SOMOID.Helpers
                                c.[resource-name] AS contName
                         FROM [container] c
                         JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                        WHERE a.[res-type] = @active
+
                         ORDER BY a.[resource-name], c.[creation-datetime]",
                     conn
                 )
             )
             {
-                cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
-                conn.Open();
+               conn.Open();
                 using (var reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
@@ -86,14 +84,13 @@ namespace SOMOID.Helpers
                         FROM [container] c
                         JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
                         WHERE a.[resource-name] = @appName
-                          AND a.[res-type] = @active
+                         
                         ORDER BY c.[creation-datetime]",
                     conn
                 )
             )
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
-                cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
                 conn.Open();
                 using (var reader = cmd.ExecuteReader())
                 {
@@ -121,13 +118,12 @@ namespace SOMOID.Helpers
                 JOIN [container] c ON c.[resource-name] = ci.[container-resource-name]
                                     AND c.[application-resource-name] = ci.[application-resource-name]
                 JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                WHERE a.[res-type] = @active
+                
                 ORDER BY a.[resource-name], c.[resource-name], ci.[creation-datetime]",
                     conn
                 )
             )
             {
-                cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
                 conn.Open();
                 using (var reader = cmd.ExecuteReader())
                 {
@@ -157,13 +153,13 @@ namespace SOMOID.Helpers
                 JOIN [container] c ON c.[resource-name] = s.[container-resource-name]
                                     AND c.[application-resource-name] = s.[application-resource-name]
                 JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
-                WHERE a.[res-type] = @active
+                
                 ORDER BY a.[resource-name], c.[resource-name], s.[creation-datetime]",
                     conn
                 )
             )
             {
-                cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
+                
                 conn.Open();
                 using (var reader = cmd.ExecuteReader())
                 {
@@ -193,7 +189,7 @@ namespace SOMOID.Helpers
                     JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
                     WHERE a.[resource-name] = @appName
                     AND c.[resource-name] = @containerName
-                    AND a.[res-type] = @active
+                    
                     ORDER BY s.[creation-datetime]",
                     conn
                 )
@@ -201,7 +197,7 @@ namespace SOMOID.Helpers
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
                 cmd.Parameters.AddWithValue("@containerName", containerName);
-                cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
+               
                 conn.Open();
                 using (var reader = cmd.ExecuteReader())
                 {
@@ -231,7 +227,7 @@ namespace SOMOID.Helpers
                    s.[creation-datetime],
                    s.[container-resource-name],
                    s.[application-resource-name],
-                   s.[res-type],
+                  
                    s.[evt],
                    s.[endpoint]
             FROM [subscription] s
@@ -241,7 +237,7 @@ namespace SOMOID.Helpers
             WHERE a.[resource-name] = @appName
               AND c.[resource-name] = @containerName
               AND s.[resource-name] = @subName
-              AND a.[res-type] = @active",
+              ",
                     conn
                 )
             )
@@ -249,7 +245,7 @@ namespace SOMOID.Helpers
                 cmd.Parameters.AddWithValue("@appName", appName);
                 cmd.Parameters.AddWithValue("@containerName", containerName);
                 cmd.Parameters.AddWithValue("@subName", subName);
-                cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
+                
                 conn.Open();
                 using (var reader = cmd.ExecuteReader())
                 {
@@ -261,7 +257,7 @@ namespace SOMOID.Helpers
                             CreationDatetime = (DateTime)reader["creation-datetime"],
                             ContainerResourceName = (string)reader["container-resource-name"],
                             ApplicationResourceName = (string)reader["application-resource-name"],
-                            ResType = (string)reader["res-type"],
+                            
                             Evt = (int)reader["evt"],
                             Endpoint = (string)reader["endpoint"],
                         };
@@ -282,7 +278,7 @@ namespace SOMOID.Helpers
                    s.[creation-datetime],
                    s.[container-resource-name],
                    s.[application-resource-name],
-                   s.[res-type],
+                   
                    s.[evt],
                    s.[endpoint]
             FROM [subscription] s
@@ -291,14 +287,13 @@ namespace SOMOID.Helpers
             JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
             WHERE a.[resource-name] = @appName
               AND c.[resource-name] = @containerName
-              AND a.[res-type] = @active",
+              ",
                     conn
                 )
             )
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
                 cmd.Parameters.AddWithValue("@containerName", containerName);
-                cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
                 conn.Open();
                 using (var reader = cmd.ExecuteReader())
                 {
@@ -311,7 +306,7 @@ namespace SOMOID.Helpers
                                 CreationDatetime = (DateTime)reader["creation-datetime"],
                                 ContainerResourceName = (string)reader["container-resource-name"],
                                 ApplicationResourceName = (string)reader["application-resource-name"],
-                                ResType = (string)reader["res-type"],
+                               
                                 Evt = (int)reader["evt"],
                                 Endpoint = (string)reader["endpoint"],
                             }
@@ -332,14 +327,13 @@ namespace SOMOID.Helpers
                 JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
                 WHERE a.[resource-name] = @applicationName 
                 AND c.[resource-name] = @containerName
-                AND a.[res-type] = @active";
+                ";
             using (var conn = new SqlConnection(connection))
             {
                 conn.Open();
                 var cmdCheckParent = new SqlCommand(sqlCheckParent, conn);
                 cmdCheckParent.Parameters.AddWithValue("@applicationName", appName);
                 cmdCheckParent.Parameters.AddWithValue("@containerName", containerName);
-                cmdCheckParent.Parameters.AddWithValue("@active", ActiveApplicationResType);
                 containerCount = (int)cmdCheckParent.ExecuteScalar();
             }
             return containerCount;
@@ -381,7 +375,7 @@ namespace SOMOID.Helpers
             string sqlInsert =
                 @"
                 INSERT INTO [subscription]
-                ([resource-name], [creation-datetime], [container-resource-name], [application-resource-name], [res-type], [evt], [endpoint])
+                ([resource-name], [creation-datetime], [container-resource-name], [application-resource-name], [evt], [endpoint])
                 VALUES (@resourceName, @creationDatetime, @containerResourceName, @appName, @resType, @evt, @endpoint)";
             using (var conn = new SqlConnection(connection))
             {
@@ -406,17 +400,16 @@ namespace SOMOID.Helpers
                 var cmd = new SqlCommand(
                     @"
                 SELECT [resource-name],
-                       [creation-datetime],
-                       [res-type]
+                       [creation-datetime]
+                      
                 FROM [application]
                 WHERE [resource-name] = @appName
-                  AND [res-type] = @active",
+                  ",
                     conn
                 )
             )
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
-                cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
                 conn.Open();
                 using (var reader = cmd.ExecuteReader())
                 {
@@ -426,7 +419,7 @@ namespace SOMOID.Helpers
                         {
                             ResourceName = (string)reader["resource-name"],
                             CreationDatetime = (DateTime)reader["creation-datetime"],
-                            ResType = (string)reader["res-type"],
+ 
                         };
                     }
                 }
@@ -440,7 +433,7 @@ namespace SOMOID.Helpers
             using (
                 var cmd = new SqlCommand(
                     @"
-                SELECT TOP 1 [res-type]
+                SELECT *
                 FROM [application]
                 WHERE [resource-name] = @appName",
                     conn
@@ -461,7 +454,7 @@ namespace SOMOID.Helpers
                 var cmd = new SqlCommand(
                     @"
                 INSERT INTO [application]
-                ([resource-name], [creation-datetime], [res-type])
+                ([resource-name], [creation-datetime])
                 VALUES (@resourceName, @creationDatetime, @resType)",
                     conn
                 )
@@ -486,14 +479,13 @@ namespace SOMOID.Helpers
                     UPDATE [application]
                     SET [resource-name] = @newName
                     WHERE [resource-name] = @currentName
-                      AND [res-type] = @active",
+                      ",
                         conn
                     )
                 )
                 {
                     cmd.Parameters.AddWithValue("@newName", newName);
                     cmd.Parameters.AddWithValue("@currentName", currentName);
-                    cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
                     var rows = cmd.ExecuteNonQuery();
                     if (rows == 0)
                         return null;
@@ -504,16 +496,15 @@ namespace SOMOID.Helpers
                         @"
                     SELECT [resource-name],
                            [creation-datetime],
-                           [res-type]
+
                     FROM [application]
                     WHERE [resource-name] = @appName
-                      AND [res-type] = @active",
+                      ",
                         conn
                     )
                 )
                 {
                     cmdGet.Parameters.AddWithValue("@appName", newName);
-                    cmdGet.Parameters.AddWithValue("@active", ActiveApplicationResType);
                     using (var reader = cmdGet.ExecuteReader())
                     {
                         if (reader.Read())
@@ -522,7 +513,6 @@ namespace SOMOID.Helpers
                             {
                                 ResourceName = (string)reader["resource-name"],
                                 CreationDatetime = (DateTime)reader["creation-datetime"],
-                                ResType = (string)reader["res-type"],
                             };
                         }
                     }
@@ -531,23 +521,20 @@ namespace SOMOID.Helpers
             return null;
         }
 
-        public bool SoftDeleteApplication(string appName)
+        
+        public bool HardDeleteApplication(string appName)
         {
             using (var conn = new SqlConnection(connection))
             using (
                 var cmd = new SqlCommand(
                     @"
-                UPDATE [application]
-                SET [res-type] = @deleted
-                WHERE [resource-name] = @appName
-                  AND [res-type] = @active",
+                DELETE [application]
+                WHERE [resource-name] = @appName",
                     conn
                 )
             )
             {
-                cmd.Parameters.AddWithValue("@deleted", DeletedApplicationResType);
                 cmd.Parameters.AddWithValue("@appName", appName);
-                cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
                 conn.Open();
                 return cmd.ExecuteNonQuery() > 0;
             }
@@ -561,14 +548,12 @@ namespace SOMOID.Helpers
                     @"
                 SELECT COUNT(*)
                 FROM [application]
-                WHERE [resource-name] = @appName
-                  AND [res-type] = @active",
+                WHERE [resource-name] = @appName",
                     conn
                 )
             )
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
-                cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
                 conn.Open();
                 return (int)cmd.ExecuteScalar() > 0;
             }
@@ -582,20 +567,19 @@ namespace SOMOID.Helpers
                     @"
                 SELECT c.[resource-name],
                        c.[creation-datetime],
-                       c.[res-type],
+
                        c.[application-resource-name]
                 FROM [container] c
                 JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
                 WHERE a.[resource-name] = @appName
-                  AND c.[resource-name] = @containerName
-                  AND a.[res-type] = @active",
+                  AND c.[resource-name] = @containerName",
                     conn
                 )
             )
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
                 cmd.Parameters.AddWithValue("@containerName", containerName);
-                cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
+
                 conn.Open();
                 using (var reader = cmd.ExecuteReader())
                 {
@@ -605,7 +589,7 @@ namespace SOMOID.Helpers
                         {
                             ResourceName = (string)reader["resource-name"],
                             CreationDatetime = (DateTime)reader["creation-datetime"],
-                            ResType = (string)reader["res-type"],
+                
                             ApplicationResourceName = (string)reader["application-resource-name"],
                         };
                     }
@@ -625,14 +609,13 @@ namespace SOMOID.Helpers
                 JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
                 WHERE a.[resource-name] = @appName
                   AND c.[resource-name] = @containerName
-                  AND a.[res-type] = @active",
+                  ",
                     conn
                 )
             )
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
                 cmd.Parameters.AddWithValue("@containerName", containerName);
-                cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
                 conn.Open();
                 return (int)cmd.ExecuteScalar() > 0;
             }
@@ -666,7 +649,7 @@ namespace SOMOID.Helpers
                 var cmd = new SqlCommand(
                     @"
                 INSERT INTO [container]
-                ([resource-name], [creation-datetime], [res-type], [application-resource-name])
+                ([resource-name], [creation-datetime], [application-resource-name])
                 VALUES (@resourceName, @creationDatetime, @resType, @appResourceName)",
                     conn
                 )
@@ -708,7 +691,7 @@ namespace SOMOID.Helpers
                 using (
                     var cmdGet = new SqlCommand(
                         @"
-                    SELECT [resource-name], [creation-datetime], [res-type], [application-resource-name]
+                    SELECT [resource-name], [creation-datetime], [application-resource-name]
                     FROM [container]
                     WHERE [resource-name] = @name
                       AND [application-resource-name] = @appName",
@@ -726,7 +709,6 @@ namespace SOMOID.Helpers
                             {
                                 ResourceName = (string)reader["resource-name"],
                                 CreationDatetime = (DateTime)reader["creation-datetime"],
-                                ResType = (string)reader["res-type"],
                                 ApplicationResourceName = (string)
                                     reader["application-resource-name"],
                             };
@@ -752,15 +734,13 @@ namespace SOMOID.Helpers
                         JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
                         WHERE a.[resource-name] = @appName
                           AND c.[resource-name] = @containerName
-                          AND ci.[application-resource-name] = @appName
-                          AND a.[res-type] = @active",
+                          AND ci.[application-resource-name] = @appName",
                         conn
                     )
                 )
                 {
                     cmdDelCI.Parameters.AddWithValue("@appName", appName);
                     cmdDelCI.Parameters.AddWithValue("@containerName", containerName);
-                    cmdDelCI.Parameters.AddWithValue("@active", ActiveApplicationResType);
                     cmdDelCI.ExecuteNonQuery();
                 }
 
@@ -774,15 +754,13 @@ namespace SOMOID.Helpers
                         JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
                         WHERE a.[resource-name] = @appName
                           AND c.[resource-name] = @containerName
-                          AND s.[application-resource-name] = @appName
-                          AND a.[res-type] = @active",
+                          AND s.[application-resource-name] = @appName",
                         conn
                     )
                 )
                 {
                     cmdDelSub.Parameters.AddWithValue("@appName", appName);
                     cmdDelSub.Parameters.AddWithValue("@containerName", containerName);
-                    cmdDelSub.Parameters.AddWithValue("@active", ActiveApplicationResType);
                     cmdDelSub.ExecuteNonQuery();
                 }
 
@@ -793,15 +771,13 @@ namespace SOMOID.Helpers
                         FROM [container] c
                         JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
                         WHERE a.[resource-name] = @appName
-                          AND c.[resource-name] = @containerName
-                          AND a.[res-type] = @active",
+                          AND c.[resource-name] = @containerName",
                         conn
                     )
                 )
                 {
                     cmdDelContainer.Parameters.AddWithValue("@appName", appName);
                     cmdDelContainer.Parameters.AddWithValue("@containerName", containerName);
-                    cmdDelContainer.Parameters.AddWithValue("@active", ActiveApplicationResType);
                     return cmdDelContainer.ExecuteNonQuery() > 0;
                 }
             }
@@ -818,14 +794,14 @@ namespace SOMOID.Helpers
                 JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
                 WHERE a.[resource-name] = @appName
                   AND c.[resource-name] = @containerName
-                  AND a.[res-type] = @active",
+                  ",
                     conn
                 )
             )
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
                 cmd.Parameters.AddWithValue("@containerName", containerName);
-                cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
+               
                 conn.Open();
                 return (int)cmd.ExecuteScalar() > 0;
             }
@@ -878,7 +854,7 @@ namespace SOMOID.Helpers
                 WHERE a.[resource-name] = @appName
                   AND c.[resource-name] = @containerName
                   AND ci.[resource-name] = @ciName
-                  AND a.[res-type] = @active",
+                  ",
                     conn
                 )
             )
@@ -886,7 +862,7 @@ namespace SOMOID.Helpers
                 cmd.Parameters.AddWithValue("@appName", appName);
                 cmd.Parameters.AddWithValue("@containerName", containerName);
                 cmd.Parameters.AddWithValue("@ciName", ciName);
-                cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
+                
                 conn.Open();
                 using (var reader = cmd.ExecuteReader())
                 {
@@ -950,7 +926,7 @@ namespace SOMOID.Helpers
                   AND c.[resource-name] = @containerName
                   AND ci.[resource-name] = @ciName
                   AND ci.[application-resource-name] = @appName
-                  AND a.[res-type] = @active",
+                  ",
                     conn
                 )
             )
@@ -958,7 +934,6 @@ namespace SOMOID.Helpers
                 cmd.Parameters.AddWithValue("@appName", appName);
                 cmd.Parameters.AddWithValue("@containerName", containerName);
                 cmd.Parameters.AddWithValue("@ciName", ciName);
-                cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
                 conn.Open();
                 return cmd.ExecuteNonQuery() > 0;
             }
@@ -978,7 +953,7 @@ namespace SOMOID.Helpers
                 WHERE a.[resource-name] = @appName
                 AND c.[resource-name] = @containerName
                 AND s.[resource-name] = @subName
-                AND a.[res-type] = @active",
+                ",
                     conn
                 )
             )
@@ -986,7 +961,6 @@ namespace SOMOID.Helpers
                 cmd.Parameters.AddWithValue("@appName", appName);
                 cmd.Parameters.AddWithValue("@containerName", containerName);
                 cmd.Parameters.AddWithValue("@subName", subName);
-                cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
                 conn.Open();
                 return cmd.ExecuteNonQuery() > 0;
             }
@@ -1007,14 +981,13 @@ namespace SOMOID.Helpers
                                     AND c.[application-resource-name] = ci.[application-resource-name]
                 JOIN [application] a ON a.[resource-name] = c.[application-resource-name]
                 WHERE a.[resource-name] = @appName
-                  AND a.[res-type] = @active
+                  
                 ORDER BY a.[resource-name], c.[resource-name], ci.[creation-datetime]",
                     conn
                 )
             )
             {
                 cmd.Parameters.AddWithValue("@appName", appName);
-                cmd.Parameters.AddWithValue("@active", ActiveApplicationResType);
                 conn.Open();
                 using (var reader = cmd.ExecuteReader())
                 {
