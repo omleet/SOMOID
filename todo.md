@@ -36,7 +36,14 @@
 
 ---
 
-## Test Applications (15% of grade)
+## Test Applications (15% of grade)** ⚠️Verifiquem se é mesmo isto e que está correto!⚠️
+--
+To test:
+Use MQTTX client to subscribe to the topic `api/somiod/door/door`.
+Verify that you receive notifications from both HTTP and MQTT endpoints.
+Should work and see 2 Posts in MQTTX client. 
+In the notificationList in application B Form should have 3 because it makes for HTTP, MQTT and door_status. 
+--
 
 - [ ] **Implement Test Application A (IoT Device)**
   - Create a functional test application (e.g., light bulb IoT device) that:

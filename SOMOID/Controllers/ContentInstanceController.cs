@@ -42,6 +42,10 @@ namespace SOMOID.Controllers
 
         #region GET Operations
 
+        /// <summary>
+        /// Devolve a content-instance <c>ciName</c> existente no container <c>containerName</c> da aplicação <c>appName</c>.
+        /// </summary>
+        /// <remarks>GET /api/somiod/{appName}/{containerName}/{ciName}</remarks>
         [HttpGet]
         [GetRoute("api/somiod/{appName}/{containerName}/{ciName}")]
         public System.Web.Http.IHttpActionResult GetContentInstance(
@@ -67,6 +71,10 @@ namespace SOMOID.Controllers
 
         #region POST Operations (Create)
 
+        /// <summary>
+        /// Cria uma nova content-instance no container <c>containerName</c> da aplicação <c>appName</c> e dispara as notificações configuradas.
+        /// </summary>
+        /// <remarks>POST /api/somiod/{appName}/{containerName}</remarks>
         [HttpPost]
         [PostRoute("api/somiod/{appName}/{containerName}")]
         public System.Web.Http.IHttpActionResult CreateResource(
@@ -98,6 +106,8 @@ namespace SOMOID.Controllers
                         if (result.Error == "Content instance already exists") return Conflict();
                         return InternalServerError(new Exception(result.Error));
                     }
+
+                    _ = NotifySubscriptionsAsync(appName, containerName, ci, SubscriptionEventType.Creation);
 
                     string locationUrl = $"/api/somiod/{appName}/{containerName}/{ci.ResourceName}";
                     var responseValue = new
@@ -200,6 +210,10 @@ namespace SOMOID.Controllers
 
         #region DELETE Operations
 
+        /// <summary>
+        /// Remove a content-instance <c>ciName</c> do container <c>containerName</c> da aplicação <c>appName</c> e notifica as subscrições relevantes.
+        /// </summary>
+        /// <remarks>DELETE /api/somiod/{appName}/{containerName}/{ciName}</remarks>
         [System.Web.Http.HttpDelete]
         [Api.Routing.DeleteRoute("api/somiod/{appName}/{containerName}/{ciName}")]
         public async System.Threading.Tasks.Task<System.Web.Http.IHttpActionResult> DeleteContentInstance(

@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<notification>
+  <eventType>creation</eventType>
+  <eventCode>1</eventCode>
+  <subscription>
+    <resourceName>sub-20251213143816-d469c245</resourceName>
+    <evt>1</evt>
+    <endpoint>mqtt://localhost:1883</endpoint>
+  </subscription>
+  <resource>
+    <resourceName>door-49260cdd39824daebed87ec3bc2b30d9</resourceName>
+    <creationDatetime>2025-12-13T15:13:37</creationDatetime>
+    <resType>content-instance</resType>
+    <containerResourceName>door</containerResourceName>
+    <applicationResourceName>door</applicationResourceName>
+    <contentType>text/plain</contentType>
+    <content>open</content>
+    <path>/api/somiod/door/door/door-49260cdd39824daebed87ec3bc2b30d9</path>
+  </resource>
+  <triggeredAt>2025-12-13T15:13:37</triggeredAt>
+</notification>
