@@ -360,5 +360,5 @@ FodyWeavers.xsd
 *.mdf
 *.ldf
 
-# Ignore xml files in App_Data/Notifications folder
+# Ignore everything in Notifications folder
 SOMOID/SOMOID/App_Data/Notifications/*
