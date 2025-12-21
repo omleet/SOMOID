@@ -13,9 +13,9 @@ Target DBMS: **Microsoft SQL Server** (based on `.mdf/.ldf` usage)
 
 ### Option A – New Database
 ```sql
-CREATE DATABASE ResourceDB;
+CREATE DATABASE SOMOID_ResourceDB;
 GO
-USE ResourceDB;
+USE SOMOID_ResourceDB;
 GO
 ```
 
@@ -26,7 +26,7 @@ GO
 4. Click **OK**
 5. Select the database:
 ```sql
-USE ResourceDB;
+USE SOMOID_ResourceDB;
 GO
 ```
 
@@ -192,13 +192,4 @@ GO
   - Automated testing
 
 ---
-
-## 5. To-Do Item Status Update
-
-✅ **Database schema defined**  
-✅ **SQL script created**  
-✅ **Sample data included**  
-✅ **Setup instructions provided**  
-
-➡️ You can now mark this task as **DONE**.
 
