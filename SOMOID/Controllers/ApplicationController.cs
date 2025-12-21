@@ -135,7 +135,7 @@ namespace SOMOID.Controllers
             }
             catch (Exception ex)
             {
-                return InternalServerError(ex);
+                return InternalServerError(new Exception("Something went wrong creating an application"));
             }
         }
         #endregion

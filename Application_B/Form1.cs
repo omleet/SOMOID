@@ -460,6 +460,9 @@ namespace Application_B
                 throw new InvalidOperationException($"Failed to create container: {(int)createResponse.StatusCode} {createResponse.Content}");
         }
 
-        
+        private void Form1_Load(object sender, EventArgs e)
+        {
+
+        }
     }
 }
